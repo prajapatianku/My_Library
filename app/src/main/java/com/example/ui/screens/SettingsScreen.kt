@@ -362,6 +362,7 @@ fun SettingsScreen(
     if (showLibraryProfileDialog) {
         LibraryProfileDialog(
             library = library,
+            viewModel = viewModel,
             onDismiss = { showLibraryProfileDialog = false }
         )
     }
@@ -679,6 +680,16 @@ fun BranchManagerDialog(
     var newBranchClosingTime by remember { mutableStateOf("11:00 PM") }
     var newBranchUpiId by remember { mutableStateOf("saraswati.lib@okhdfcbank") }
 
+    LaunchedEffect(newBranchPincode) {
+        val cleanPin = newBranchPincode.trim().filter { it.isDigit() }
+        if (cleanPin.length == 6) {
+            viewModel.lookupPincode(cleanPin) { detectedCity, detectedState ->
+                newBranchCity = detectedCity
+                newBranchState = detectedState
+            }
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
@@ -924,45 +935,197 @@ fun AuditLogsDialog(
 @Composable
 fun LibraryProfileDialog(
     library: com.example.data.model.Library,
+    viewModel: LibraryViewModel,
     onDismiss: () -> Unit
 ) {
+    var name by remember { mutableStateOf(library.name) }
+    var phone by remember { mutableStateOf(library.phone) }
+    var email by remember { mutableStateOf(library.email) }
+    var address by remember { mutableStateOf(library.address) }
+    var location by remember { mutableStateOf(library.location) }
+    var city by remember { mutableStateOf(library.city) }
+    var state by remember { mutableStateOf(library.state) }
+    var pincode by remember { mutableStateOf(library.pincode) }
+    var upiId by remember { mutableStateOf(library.upiId) }
+    var totalSeats by remember { mutableStateOf(library.totalSeats.toString()) }
+    var openingTime by remember { mutableStateOf(library.openingTime) }
+    var closingTime by remember { mutableStateOf(library.closingTime) }
+
+    LaunchedEffect(pincode) {
+        val cleanPin = pincode.trim().filter { it.isDigit() }
+        if (cleanPin.length == 6) {
+            viewModel.lookupPincode(cleanPin) { detectedCity, detectedState ->
+                city = detectedCity
+                state = detectedState
+            }
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth(0.95f)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Library Information", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(text = "Edit Library Profile", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = WarmTextDark)
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Text(text = library.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = OrangePrimaryDark)
-                Text(text = "${library.address}${if (library.location.isNotBlank()) " • " + library.location else ""}", style = MaterialTheme.typography.bodySmall)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Total Seats Capacity: ${library.totalSeats} Seats", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = WarmTextDark)
-                Text(text = "Operating Hours: ${library.openingTime} to ${library.closingTime}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "Contact Phone: ${library.phone}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "Official Email: ${library.email}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "UPI Payment ID: ${library.upiId}", style = MaterialTheme.typography.bodySmall, color = SuccessGreen, fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Library Name *") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Address *") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = pincode,
+                        onValueChange = { pincode = it },
+                        label = { Text("Pincode (6 digits)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = city,
+                        onValueChange = { city = it },
+                        label = { Text("City") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = state,
+                        onValueChange = { state = it },
+                        label = { Text("State") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = totalSeats,
+                        onValueChange = { totalSeats = it },
+                        label = { Text("Seats Capacity") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text("Phone") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = openingTime,
+                        onValueChange = { openingTime = it },
+                        label = { Text("Opens At") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = closingTime,
+                        onValueChange = { closingTime = it },
+                        label = { Text("Closes At") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                OutlinedTextField(
+                    value = upiId,
+                    onValueChange = { upiId = it },
+                    label = { Text("UPI Payment ID") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
-                    onClick = onDismiss,
+                    onClick = {
+                        if (name.isNotBlank()) {
+                            viewModel.updateLibraryDetails(
+                                name = name,
+                                phone = phone,
+                                address = address,
+                                city = city,
+                                state = state,
+                                pincode = pincode,
+                                totalSeats = totalSeats.toIntOrNull() ?: 60,
+                                openingTime = openingTime,
+                                closingTime = closingTime,
+                                upiId = upiId
+                            )
+                            onDismiss()
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                    enabled = name.isNotBlank()
                 ) {
-                    Text("Done")
+                    Text("Save Changes")
                 }
             }
         }

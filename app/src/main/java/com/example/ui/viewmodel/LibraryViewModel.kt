@@ -393,6 +393,33 @@ class LibraryViewModel(
         _uiToastMessage.value = "Upgraded to ${planType.displayName}! All features unlocked."
     }
 
+    fun updateLibraryDetails(
+        name: String,
+        phone: String,
+        address: String,
+        city: String,
+        state: String,
+        pincode: String,
+        totalSeats: Int,
+        openingTime: String,
+        closingTime: String,
+        upiId: String
+    ) {
+        repository.updateLibraryDetails(
+            libraryName = name,
+            phone = phone,
+            address = address,
+            city = city,
+            state = state,
+            pincode = pincode,
+            totalSeats = totalSeats,
+            openingTime = openingTime,
+            closingTime = closingTime,
+            upiId = upiId
+        )
+        _uiToastMessage.value = "Library profile updated successfully!"
+    }
+
     fun createStudent(
         fullName: String,
         mobile: String,
@@ -725,5 +752,14 @@ class LibraryViewModel(
 
         launchWhatsApp(context, targetPhone, msg)
         _uiToastMessage.value = "Opening WhatsApp fee reminder for ${student.fullName} (₹${student.dueAmount} due)"
+    }
+
+    fun lookupPincode(pincode: String, onResult: (city: String, state: String) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.lookupPincode(pincode)
+            if (result != null) {
+                onResult(result.first, result.second)
+            }
+        }
     }
 }

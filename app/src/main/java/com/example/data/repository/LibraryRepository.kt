@@ -769,6 +769,51 @@ class LibraryRepository(
         }
     }
 
+    fun updateLibraryDetails(
+        libraryName: String,
+        phone: String,
+        address: String,
+        city: String,
+        state: String,
+        pincode: String,
+        totalSeats: Int,
+        openingTime: String,
+        closingTime: String,
+        upiId: String
+    ) {
+        _library.value = _library.value.copy(
+            name = libraryName,
+            phone = phone,
+            address = address,
+            city = city,
+            state = state,
+            pincode = pincode,
+            totalSeats = totalSeats,
+            openingTime = openingTime,
+            closingTime = closingTime,
+            upiId = upiId
+        )
+        // Propagate changes to the active branch details if we are modifying active branch
+        _branches.value = _branches.value.map { br ->
+            if (br.id == _activeBranchId.value) {
+                br.copy(
+                    name = libraryName,
+                    phone = phone,
+                    address = address,
+                    city = city,
+                    state = state,
+                    pincode = pincode,
+                    totalSeats = totalSeats,
+                    openingTime = openingTime,
+                    closingTime = closingTime,
+                    upiId = upiId
+                )
+            } else br
+        }
+        addAuditLog("Profile Updated", "Library", "Library profile configurations updated")
+        persistCurrentAccount()
+    }
+
     fun completeOnboarding(
         libraryName: String,
         phone: String,
@@ -779,15 +824,17 @@ class LibraryRepository(
         openingTime: String,
         closingTime: String
     ) {
-        _library.value = _library.value.copy(
-            name = libraryName,
+        updateLibraryDetails(
+            libraryName = libraryName,
             phone = phone,
             address = address,
             city = city,
             state = state,
             pincode = pincode,
+            totalSeats = 60,
             openingTime = openingTime,
-            closingTime = closingTime
+            closingTime = closingTime,
+            upiId = "${libraryName.lowercase().replace(" ", "").take(10)}@upi"
         )
         _isOnboardingCompleted.value = true
         addAuditLog("Onboarding Completed", "Library", "Library profile configured: $libraryName")
@@ -1203,6 +1250,39 @@ class LibraryRepository(
                 status = "pending"
             )
         )
+    }
+
+    suspend fun lookupPincode(pincode: String): Pair<String, String>? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = "https://api.postalpincode.in/pincode/$pincode"
+                val request = okhttp3.Request.Builder().url(url).build()
+                val client = okhttp3.OkHttpClient()
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val bodyStr = response.body?.string()
+                    if (!bodyStr.isNullOrBlank()) {
+                        val rootArray = org.json.JSONArray(bodyStr)
+                        if (rootArray.length() > 0) {
+                            val rootObj = rootArray.getJSONObject(0)
+                            if (rootObj.optString("Status") == "Success") {
+                                val postOffices = rootObj.optJSONArray("PostOffice")
+                                if (postOffices != null && postOffices.length() > 0) {
+                                    val firstOffice = postOffices.getJSONObject(0)
+                                    val district = firstOffice.optString("District")
+                                    val state = firstOffice.optString("State")
+                                    return@withContext Pair(district, state)
+                                }
+                            }
+                        }
+                    }
+                }
+                null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
     }
 
     private fun generateDemoAuditLogs(): List<AuditLog> {

@@ -128,6 +128,16 @@ fun OnboardingWizardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
+                     LaunchedEffect(pincode) {
+                        val cleanPin = pincode.trim().filter { it.isDigit() }
+                        if (cleanPin.length == 6) {
+                            viewModel.lookupPincode(cleanPin) { detectedCity, detectedState ->
+                                city = detectedCity
+                                state = detectedState
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
@@ -144,18 +154,27 @@ fun OnboardingWizardScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedTextField(
-                            value = city,
-                            onValueChange = { city = it },
-                            label = { Text("City") },
+                            value = pincode,
+                            onValueChange = { pincode = it },
+                            label = { Text("Pincode (6 digits)") },
                             modifier = Modifier.weight(1f)
                         )
                         OutlinedTextField(
-                            value = pincode,
-                            onValueChange = { pincode = it },
-                            label = { Text("Pincode") },
+                            value = city,
+                            onValueChange = { city = it },
+                            label = { Text("City / District") },
                             modifier = Modifier.weight(1f)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = state,
+                        onValueChange = { state = it },
+                        label = { Text("State") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 3 -> {

@@ -27,6 +27,9 @@ import com.example.data.model.SaaSPlanType
 import com.example.ui.components.PlanBadge
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.LibraryViewModel
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun SettingsScreen(
@@ -46,6 +49,7 @@ fun SettingsScreen(
     var showLibraryProfileDialog by remember { mutableStateOf(false) }
     var showShiftManagerDialog by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var showSupportDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -223,14 +227,9 @@ fun SettingsScreen(
 
                 SettingsItemCard(
                     title = "Support & Helpdesk",
-                    subtitle = if (viewModel.hasFeature("email_support")) "Priority Support Active" else "Available on Premium/Business",
+                    subtitle = "Get in touch with call, WhatsApp, or email support",
                     icon = Icons.Default.HelpOutline,
-                    isLocked = !viewModel.hasFeature("email_support"),
-                    onClick = {
-                        if (!viewModel.hasFeature("email_support")) {
-                            viewModel.requestUpgrade("email_support")
-                        }
-                    }
+                    onClick = { showSupportDialog = true }
                 )
             }
         }
@@ -373,6 +372,165 @@ fun SettingsScreen(
             viewModel = viewModel,
             onDismiss = { showShiftManagerDialog = false }
         )
+    }
+
+    // Support & Helpdesk Dialog
+    if (showSupportDialog) {
+        SupportDialog(onDismiss = { showSupportDialog = false })
+    }
+}
+
+@Composable
+fun SupportDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth(0.9f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Help & Support",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = WarmTextDark
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "If you face any issues or need help, connect with our support desk:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = WarmTextMuted,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                // Call Action Row
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clickable {
+                            try {
+                                val intent = Intent(Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:8709489716")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                        },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Call",
+                            tint = NavyPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(text = "Call Us", fontWeight = FontWeight.Bold, color = WarmTextDark)
+                            Text(text = "8709489716", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                        }
+                    }
+                }
+
+                // WhatsApp Action Row
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clickable {
+                            try {
+                                val url = "https://api.whatsapp.com/send?phone=918709489716&text=Hello%20Support"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                        },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Chat,
+                            contentDescription = "WhatsApp",
+                            tint = Color(0xFF25D366),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(text = "WhatsApp Support", fontWeight = FontWeight.Bold, color = WarmTextDark)
+                            Text(text = "8709489716", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                        }
+                    }
+                }
+
+                // Email Action Row
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clickable {
+                            try {
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:mylibrary@gmail.com")
+                                    putExtra(Intent.EXTRA_SUBJECT, "My Library App Support Query")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                        },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = "Email",
+                            tint = OrangePrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(text = "Email Us", fontWeight = FontWeight.Bold, color = WarmTextDark)
+                            Text(text = "mylibrary@gmail.com", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

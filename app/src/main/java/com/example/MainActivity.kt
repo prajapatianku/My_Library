@@ -20,6 +20,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.LibraryViewModel
+import com.example.data.model.SaaSPlanType
+import com.example.data.model.BillingPeriod
 
 enum class MainNavigationTab(
     val title: String,
@@ -35,15 +37,86 @@ enum class MainNavigationTab(
     SETTINGS("Menu", Icons.Filled.Menu, Icons.Outlined.Menu)
 }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
+    private val viewModel: LibraryViewModel by lazy {
+        androidx.lifecycle.ViewModelProvider(this)[LibraryViewModel::class.java]
+    }
+
+    companion object {
+        var pendingUpgradePlan: SaaSPlanType? = null
+        var pendingUpgradePeriod: BillingPeriod? = null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.razorpay.Checkout.preload(applicationContext)
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                MainApp()
+                MainApp(viewModel = viewModel)
             }
         }
+    }
+
+    fun startSaaSPayment(plan: SaaSPlanType, period: BillingPeriod) {
+        pendingUpgradePlan = plan
+        pendingUpgradePeriod = period
+
+        val amountInRupees = when (plan) {
+            SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) 99 else 399
+            SaaSPlanType.BUSINESS -> if (period == BillingPeriod.MONTHLY) 199 else 999
+            else -> 0
+        }
+
+        if (amountInRupees == 0) {
+            viewModel.upgradeSaaS(plan, period)
+            return
+        }
+
+        val checkout = com.razorpay.Checkout()
+        checkout.setKeyID(com.example.BuildConfig.RAZORPAY_KEY_ID)
+
+        try {
+            val options = org.json.JSONObject()
+            options.put("name", "My Library App")
+            options.put("description", "SaaS ${plan.displayName} subscription (${period.name.lowercase().replace("_", " ")})")
+            options.put("image", "https://s3.amazonaws.com/rzp-mobile/images/rzp.png")
+            options.put("theme.color", "#1E293B")
+            options.put("currency", "INR")
+            options.put("amount", (amountInRupees * 100).toString())
+
+            val owner = viewModel.ownerProfile.value
+            val prefill = org.json.JSONObject()
+            prefill.put("email", owner.email.ifBlank { "owner@library.com" })
+            prefill.put("contact", owner.phone.ifBlank { "9876543210" })
+            options.put("prefill", prefill)
+
+            val retryObj = org.json.JSONObject()
+            retryObj.put("enabled", true)
+            retryObj.put("max_count", 4)
+            options.put("retry", retryObj)
+
+            checkout.open(this, options)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error starting payment: " + e.message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onPaymentSuccess(razorpayPaymentId: String?) {
+        val targetPlan = pendingUpgradePlan
+        val targetPeriod = pendingUpgradePeriod
+        if (targetPlan != null && targetPeriod != null) {
+            viewModel.upgradeSaaS(targetPlan, targetPeriod)
+            Toast.makeText(this, "Payment successful! Upgraded to ${targetPlan.displayName}", Toast.LENGTH_LONG).show()
+        }
+        pendingUpgradePlan = null
+        pendingUpgradePeriod = null
+    }
+
+    override fun onPaymentError(code: Int, description: String?) {
+        Toast.makeText(this, "Payment cancelled / failed: $description", Toast.LENGTH_LONG).show()
+        pendingUpgradePlan = null
+        pendingUpgradePeriod = null
     }
 }
 

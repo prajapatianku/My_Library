@@ -104,6 +104,9 @@ dependencies {
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 
+  // Razorpay Checkout SDK
+  implementation("com.razorpay:checkout:1.6.36")
+
   // Uncomment ALL FOUR of the following dependencies together to use Firebase Auth and Google
   // Sign-In via Credential Manager:
   // implementation(libs.firebase.auth)

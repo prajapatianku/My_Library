@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
+import com.example.MainActivity
 import com.example.data.model.BillingPeriod
 import com.example.data.model.SaaSPlanType
 import com.example.ui.theme.*
@@ -33,6 +35,7 @@ fun UpgradeModal(
     viewModel: LibraryViewModel,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val currentPlan by viewModel.saasSubscription.collectAsState()
     val targetFeature by viewModel.upgradeTargetFeature.collectAsState()
 
@@ -243,9 +246,16 @@ fun UpgradeModal(
                     Button(
                         onClick = {
                             isProcessingPayment = true
-                            viewModel.upgradeSaaS(selectedPlan, billingPeriod)
+                            val activity = context as? MainActivity
+                            if (activity != null) {
+                                activity.startSaaSPayment(selectedPlan, billingPeriod)
+                                onDismiss()
+                            } else {
+                                // Fallback
+                                viewModel.upgradeSaaS(selectedPlan, billingPeriod)
+                                onDismiss()
+                            }
                             isProcessingPayment = false
-                            onDismiss()
                         },
                         modifier = Modifier
                             .fillMaxWidth()

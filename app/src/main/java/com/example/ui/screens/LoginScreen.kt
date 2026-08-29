@@ -101,6 +101,9 @@ fun LoginScreen(
     var isSameLibraryEmail by remember { mutableStateOf(true) }
     var libraryAddress by remember { mutableStateOf("") }
     var libraryLocation by remember { mutableStateOf("") }
+    var libraryPincode by remember { mutableStateOf("") }
+    var libraryCity by remember { mutableStateOf("") }
+    var libraryState by remember { mutableStateOf("") }
     var seatsCapacity by remember { mutableStateOf(60) }
     var customSeatInput by remember { mutableStateOf("60") }
 
@@ -953,12 +956,25 @@ fun LoginScreen(
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                                     )
 
+                                    LaunchedEffect(libraryPincode) {
+                                        val cleanPin = libraryPincode.trim().filter { it.isDigit() }
+                                        if (cleanPin.length == 6) {
+                                            viewModel.lookupPincode(cleanPin) { detectedCity, detectedState ->
+                                                libraryCity = detectedCity
+                                                libraryState = detectedState
+                                                if (libraryLocation.isBlank()) {
+                                                    libraryLocation = "Near $detectedCity"
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     Spacer(modifier = Modifier.height(10.dp))
 
                                     OutlinedTextField(
                                         value = libraryAddress,
                                         onValueChange = { libraryAddress = it },
-                                        label = { Text("Full Address *") },
+                                        label = { Text("Street Address / Building *") },
                                         placeholder = { Text("e.g. Plot 42, Knowledge Park III") },
                                         textStyle = AppInputTextStyle,
                                         colors = appOutlinedTextFieldColors(),
@@ -969,11 +985,57 @@ fun LoginScreen(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedTextField(
+                                            value = libraryPincode,
+                                            onValueChange = { libraryPincode = it },
+                                            label = { Text("Pincode (6 digits)") },
+                                            placeholder = { Text("e.g. 201310") },
+                                            textStyle = AppInputTextStyle,
+                                            colors = appOutlinedTextFieldColors(),
+                                            singleLine = true,
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.weight(1f),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                        )
+
+                                        OutlinedTextField(
+                                            value = libraryCity,
+                                            onValueChange = { libraryCity = it },
+                                            label = { Text("City") },
+                                            placeholder = { Text("e.g. Greater Noida") },
+                                            textStyle = AppInputTextStyle,
+                                            colors = appOutlinedTextFieldColors(),
+                                            singleLine = true,
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    OutlinedTextField(
+                                        value = libraryState,
+                                        onValueChange = { libraryState = it },
+                                        label = { Text("State") },
+                                        placeholder = { Text("e.g. Uttar Pradesh") },
+                                        textStyle = AppInputTextStyle,
+                                        colors = appOutlinedTextFieldColors(),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
                                     OutlinedTextField(
                                         value = libraryLocation,
                                         onValueChange = { libraryLocation = it },
-                                        label = { Text("Location / Landmark & City *") },
-                                        placeholder = { Text("e.g. Near Knowledge Park Metro, Greater Noida") },
+                                        label = { Text("Landmark / Location Detail *") },
+                                        placeholder = { Text("e.g. Near Knowledge Park Metro") },
                                         textStyle = AppInputTextStyle,
                                         colors = appOutlinedTextFieldColors(),
                                         leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = OrangePrimary) },
@@ -1394,6 +1456,9 @@ fun LoginScreen(
                                                     libraryEmail = libraryEmail.ifBlank { ownerEmail },
                                                     address = libraryAddress.ifBlank { "Plot 1, Main Road" },
                                                     location = libraryLocation.ifBlank { "City Center" },
+                                                    city = libraryCity,
+                                                    state = libraryState,
+                                                    pincode = libraryPincode,
                                                     seatCapacity = seatsCapacity,
                                                     shifts = configuredShifts
                                                 )

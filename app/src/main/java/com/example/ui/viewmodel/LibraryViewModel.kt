@@ -607,6 +607,9 @@ class LibraryViewModel(
         libraryEmail: String,
         address: String,
         location: String,
+        city: String = "",
+        state: String = "",
+        pincode: String = "",
         seatCapacity: Int,
         shifts: List<Shift>? = null
     ) {
@@ -621,6 +624,9 @@ class LibraryViewModel(
             libraryEmail = libraryEmail,
             address = address,
             location = location,
+            city = city,
+            state = state,
+            pincode = pincode,
             seatCapacity = seatCapacity,
             customShifts = shifts
         )

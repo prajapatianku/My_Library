@@ -244,6 +244,9 @@ class LibraryRepository(
         libraryEmail: String,
         address: String,
         location: String,
+        city: String = "",
+        state: String = "",
+        pincode: String = "",
         seatCapacity: Int,
         customShifts: List<Shift>? = null
     ) {
@@ -268,8 +271,11 @@ class LibraryRepository(
             email = libraryEmail.ifBlank { email },
             address = address,
             location = location,
+            city = city,
+            state = state,
+            pincode = pincode,
             totalSeats = libCapacity,
-            upiId = "${libraryName.lowercase().replace(" ", "").take(10)}@upi"
+            upiId = "${libraryName.lowercase().replace(" ", "").replace("&", "").take(10)}@upi"
         )
 
         val activeShifts = if (!customShifts.isNullOrEmpty()) {
@@ -279,12 +285,19 @@ class LibraryRepository(
         }
 
         val primaryBranch = Branch(
-            id = "br_01",
+            id = "branch_01",
             libraryId = libId,
             name = "Main Campus (${location.ifBlank { "Primary" }})",
             code = "BR-01",
             address = address,
             phone = contactNumber.ifBlank { phone },
+            city = city,
+            state = state,
+            pincode = pincode,
+            totalSeats = libCapacity,
+            openingTime = "06:00 AM",
+            closingTime = "11:00 PM",
+            upiId = "${libraryName.lowercase().replace(" ", "").replace("&", "").take(10)}@upi",
             isActive = true,
             isPrimary = true
         )

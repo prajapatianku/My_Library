@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 object SupabaseConfig {
     const val SUPABASE_URL = "https://ynqtzrkeburayuplqwek.supabase.co"
-    const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucXR6cmtlYnVyYXl1cGxxd2VrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NzY5OTcsImV4cCI6MjEwMzI1Mjk5N30.2hgGPL3dTiGxHktC9BwrstUGNhr-EjRQW6m_ytgrHPs"
+    const val SUPABASE_ANON_KEY = "sb_publishable_b9PQVAKGt1qLn-t5v9Bi1A_u9dVoTQD"
     const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_b9PQVAKGt1qLn-t5v9Bi1A_u9dVoTQD"
 }
 

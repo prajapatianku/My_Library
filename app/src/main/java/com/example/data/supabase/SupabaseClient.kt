@@ -14,9 +14,11 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 object SupabaseConfig {
-    const val SUPABASE_URL = "https://ynqtzrkeburayuplqwek.supabase.co"
-    const val SUPABASE_ANON_KEY = "sb_publishable_b9PQVAKGt1qLn-t5v9Bi1A_u9dVoTQD"
-    const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_b9PQVAKGt1qLn-t5v9Bi1A_u9dVoTQD"
+    val SUPABASE_URL = com.example.BuildConfig.SUPABASE_URL
+    val SUPABASE_ANON_KEY = com.example.BuildConfig.SUPABASE_SECRET_KEY
+    val SUPABASE_PUBLISHABLE_KEY = com.example.BuildConfig.SUPABASE_PUBLISHABLE_KEY
+    val SUPABASE_SECRET_KEY = com.example.BuildConfig.SUPABASE_SECRET_KEY
+    val SUPABASE_JWKS_URL = com.example.BuildConfig.SUPABASE_JWKS_URL
 }
 
 class SupabaseApiClient {

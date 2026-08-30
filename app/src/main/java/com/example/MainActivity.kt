@@ -201,6 +201,7 @@ fun MainApp(
     val shifts by viewModel.shifts.collectAsState()
 
     var selectedTab by remember { mutableStateOf(MainNavigationTab.DASHBOARD) }
+    var showSplash by remember { mutableStateOf(true) }
 
     LaunchedEffect(toastMessage) {
         toastMessage?.let { msg ->
@@ -209,7 +210,11 @@ fun MainApp(
         }
     }
 
-    if (!isLoggedIn) {
+    if (showSplash) {
+        SplashScreen(
+            onAnimationFinished = { showSplash = false }
+        )
+    } else if (!isLoggedIn) {
         LoginScreen(
             viewModel = viewModel,
             modifier = Modifier.fillMaxSize()

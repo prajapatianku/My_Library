@@ -1,9 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -144,42 +147,21 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Brand Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier
+                    .height(130.dp)
+                    .width(180.dp)
+                    .clipToBounds(),
+                contentAlignment = Alignment.TopCenter
             ) {
-                Box(
+                Image(
+                    painter = painterResource(id = com.example.R.drawable.logo_vidyara),
+                    contentDescription = "Vidyara Logo",
                     modifier = Modifier
-                        .size(54.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(OrangePrimary)
-                        .border(1.5.dp, PureWhite, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocalLibrary,
-                        contentDescription = "Vidyara Logo",
-                        tint = PureWhite,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = "Vidyara",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
-                        color = WarmTextDark
-                    )
-                    Text(
-                        text = "Complete Library Management, From One App",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = WarmTextMuted,
-                        fontSize = 11.sp
-                    )
-                }
+                        .fillMaxWidth()
+                        .height(160.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))

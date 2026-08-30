@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +48,7 @@ fun UpgradeModal(
     }
     var billingPeriod by remember { mutableStateOf(BillingPeriod.SIX_MONTH) }
     var isProcessingPayment by remember { mutableStateOf(false) }
+    var selectedBranchCount by remember { mutableStateOf(1) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -151,6 +154,13 @@ fun UpgradeModal(
                                     fontWeight = FontWeight.Bold,
                                     color = WarmTextDark
                                 )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Allowed Branches: ${currentPlan.allowedBranchesCount}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = OrangePrimaryDark
+                                )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 if (daysRemaining >= 0) {
                                     Surface(
@@ -171,6 +181,35 @@ fun UpgradeModal(
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
+
+                    if (currentPlan.planType == SaaSPlanType.BUSINESS) {
+                        val proratedPrice = viewModel.calculateProratedBranchPrice()
+                        Button(
+                            onClick = {
+                                val activity = context as? MainActivity
+                                if (activity != null) {
+                                    activity.startSaaSPayment(currentPlan.planType, currentPlan.billingPeriod, isBranchPurchase = true)
+                                    onDismiss()
+                                } else {
+                                    viewModel.purchaseAdditionalBranch()
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                        ) {
+                            Text(
+                                text = "Add Branch (₹$proratedPrice for remaining $daysRemaining days)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PureWhite
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
 
                     if (canRenew) {
                         Button(
@@ -335,7 +374,15 @@ fun UpgradeModal(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Plan: BUSINESS (3rd Plan)
-                        val businessPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹199/mo" else "₹999 / 6 mos"
+                        val businessPrice = if (billingPeriod == BillingPeriod.MONTHLY) {
+                            val base = 199
+                            val additional = (selectedBranchCount - 1) * 99
+                            "₹${base + additional}/mo"
+                        } else {
+                            val base = 999
+                            val additional = (selectedBranchCount - 1) * 499
+                            "₹${base + additional} / 6 mos"
+                        }
                         PlanSelectionCard(
                             title = "BUSINESS PLAN",
                             badge = "MULTI-BRANCH",
@@ -354,6 +401,63 @@ fun UpgradeModal(
                             ),
                             onSelect = { selectedPlan = SaaSPlanType.BUSINESS }
                         )
+                    }
+
+                    if (selectedPlan == SaaSPlanType.BUSINESS) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFBF8F3)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5DECE))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Branches to Manage",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = WarmTextDark
+                                    )
+                                    Text(
+                                        text = "Base price covers 1 branch",
+                                        fontSize = 11.sp,
+                                        color = WarmTextMuted
+                                    )
+                                }
+                                
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { if (selectedBranchCount > 1) selectedBranchCount-- },
+                                        colors = IconButtonDefaults.iconButtonColors(containerColor = PureWhite),
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+                                    }
+                                    
+                                    Text(
+                                        text = selectedBranchCount.toString(),
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.padding(horizontal = 14.dp),
+                                        color = OrangePrimaryDark
+                                    )
+                                    
+                                    IconButton(
+                                        onClick = { selectedBranchCount++ },
+                                        colors = IconButtonDefaults.iconButtonColors(containerColor = PureWhite),
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -376,11 +480,11 @@ fun UpgradeModal(
                                 isProcessingPayment = true
                                 val activity = context as? MainActivity
                                 if (activity != null) {
-                                    activity.startSaaSPayment(selectedPlan, billingPeriod)
+                                    activity.startSaaSPayment(selectedPlan, billingPeriod, branchCount = selectedBranchCount)
                                     onDismiss()
                                 } else {
                                     // Fallback
-                                    viewModel.upgradeSaaS(selectedPlan, billingPeriod)
+                                    viewModel.upgradeSaaS(selectedPlan, billingPeriod, selectedBranchCount)
                                     onDismiss()
                                 }
                                 isProcessingPayment = false

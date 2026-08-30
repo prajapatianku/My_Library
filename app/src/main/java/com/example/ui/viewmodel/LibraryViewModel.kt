@@ -367,8 +367,10 @@ class LibraryViewModel(
         closingTime: String,
         upiId: String
     ) {
-        if (!hasFeature("multi_branch")) {
-            requestUpgrade("multi_branch")
+        val sub = saasSubscription.value
+        val currentBranchCount = branches.value.size
+        if (currentBranchCount >= sub.allowedBranchesCount) {
+            requestUpgrade("add_branch")
             return
         }
         val success = repository.createBranch(
@@ -390,11 +392,36 @@ class LibraryViewModel(
         }
     }
 
-    fun upgradeSaaS(planType: SaaSPlanType, period: BillingPeriod) {
-        repository.upgradeSaaSPlan(planType, period)
+    fun upgradeSaaS(planType: SaaSPlanType, period: BillingPeriod, allowedBranches: Int = 1) {
+        repository.upgradeSaaSPlan(planType, period, allowedBranches)
         _showUpgradeModal.value = false
         _upgradeTargetFeature.value = null
         _uiToastMessage.value = "Upgraded to ${planType.displayName}! All features unlocked."
+    }
+
+    fun purchaseAdditionalBranch() {
+        repository.addSaaSSubscriptionBranch()
+        _showUpgradeModal.value = false
+        _uiToastMessage.value = "Additional branch added to your subscription successfully!"
+    }
+
+    fun calculateProratedBranchPrice(): Int {
+        val sub = saasSubscription.value
+        if (sub.planType != SaaSPlanType.BUSINESS) return 0
+        
+        val daysRemaining = getSubscriptionDaysRemaining()
+        if (daysRemaining <= 0) return 0
+        
+        val totalDays = if (sub.billingPeriod == BillingPeriod.MONTHLY) 28 else 168
+        
+        val baseAdditionalPrice = if (sub.billingPeriod == BillingPeriod.MONTHLY) {
+            99
+        } else {
+            499
+        }
+        
+        val proratedPrice = (baseAdditionalPrice * daysRemaining) / totalDays
+        return proratedPrice.coerceAtLeast(1)
     }
 
     fun renewSaaS() {

@@ -46,7 +46,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
     companion object {
         var pendingUpgradePlan: SaaSPlanType? = null
         var pendingUpgradePeriod: BillingPeriod? = null
+        var pendingBranchCount: Int = 1
         var isRenewalPayment: Boolean = false
+        var isBranchPurchasePayment: Boolean = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,22 +62,43 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         }
     }
 
-    fun startSaaSPayment(plan: SaaSPlanType, period: BillingPeriod, isRenewal: Boolean = false) {
+    fun startSaaSPayment(
+        plan: SaaSPlanType, 
+        period: BillingPeriod, 
+        isRenewal: Boolean = false,
+        isBranchPurchase: Boolean = false,
+        branchCount: Int = 1
+    ) {
         pendingUpgradePlan = plan
         pendingUpgradePeriod = period
         isRenewalPayment = isRenewal
+        isBranchPurchasePayment = isBranchPurchase
+        pendingBranchCount = branchCount
 
-        val amountInRupees = when (plan) {
-            SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) 99 else 399
-            SaaSPlanType.BUSINESS -> if (period == BillingPeriod.MONTHLY) 199 else 999
-            else -> 0
+        val amountInRupees = if (isBranchPurchase) {
+            viewModel.calculateProratedBranchPrice()
+        } else {
+            val basePrice = when (plan) {
+                SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) 99 else 399
+                SaaSPlanType.BUSINESS -> if (period == BillingPeriod.MONTHLY) 199 else 999
+                else -> 0
+            }
+            if (plan == SaaSPlanType.BUSINESS && branchCount > 1) {
+                val additionalCount = branchCount - 1
+                val additionalBranchBasePrice = if (period == BillingPeriod.MONTHLY) 99 else 499
+                basePrice + (additionalCount * additionalBranchBasePrice)
+            } else {
+                basePrice
+            }
         }
 
         if (amountInRupees == 0) {
-            if (isRenewal) {
+            if (isBranchPurchase) {
+                viewModel.purchaseAdditionalBranch()
+            } else if (isRenewal) {
                 viewModel.renewSaaS()
             } else {
-                viewModel.upgradeSaaS(plan, period)
+                viewModel.upgradeSaaS(plan, period, branchCount)
             }
             return
         }
@@ -86,7 +109,14 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         try {
             val options = org.json.JSONObject()
             options.put("name", "My Library App")
-            options.put("description", "${if (isRenewal) "Renew" else "SaaS"} ${plan.displayName} subscription (${period.name.lowercase().replace("_", " ")})")
+            val desc = if (isBranchPurchase) {
+                "Add additional branch (prorated)"
+            } else if (isRenewal) {
+                "Renew ${plan.displayName} (${period.name.lowercase().replace("_", " ")})"
+            } else {
+                "SaaS ${plan.displayName} subscription (${period.name.lowercase().replace("_", " ")}) for $branchCount branch(es)"
+            }
+            options.put("description", desc)
             options.put("image", "https://s3.amazonaws.com/rzp-mobile/images/rzp.png")
             options.put("theme.color", "#1E293B")
             options.put("currency", "INR")
@@ -113,21 +143,31 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         val targetPlan = pendingUpgradePlan
         val targetPeriod = pendingUpgradePeriod
         if (targetPlan != null && targetPeriod != null) {
-            if (isRenewalPayment) {
+            if (isBranchPurchasePayment) {
+                viewModel.purchaseAdditionalBranch()
+                Toast.makeText(this, "Branch successfully added to your subscription!", Toast.LENGTH_LONG).show()
+            } else if (isRenewalPayment) {
                 viewModel.renewSaaS()
+                Toast.makeText(this, "Subscription renewed successfully!", Toast.LENGTH_LONG).show()
             } else {
-                viewModel.upgradeSaaS(targetPlan, targetPeriod)
+                viewModel.upgradeSaaS(targetPlan, targetPeriod, pendingBranchCount)
+                Toast.makeText(this, "Payment successful! Upgraded to ${targetPlan.displayName}", Toast.LENGTH_LONG).show()
             }
         }
         pendingUpgradePlan = null
         pendingUpgradePeriod = null
+        pendingBranchCount = 1
         isRenewalPayment = false
+        isBranchPurchasePayment = false
     }
 
     override fun onPaymentError(code: Int, description: String?) {
         Toast.makeText(this, "Payment cancelled / failed: $description", Toast.LENGTH_LONG).show()
         pendingUpgradePlan = null
         pendingUpgradePeriod = null
+        pendingBranchCount = 1
+        isRenewalPayment = false
+        isBranchPurchasePayment = false
     }
 }
 

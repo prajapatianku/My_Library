@@ -287,5 +287,6 @@ data class SaaSSubscription(
     val billingPeriod: BillingPeriod = BillingPeriod.MONTHLY,
     val startDate: String = "2026-08-01",
     val endDate: String = "2099-12-31",
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val allowedBranchesCount: Int = 1
 )

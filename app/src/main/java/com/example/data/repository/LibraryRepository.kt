@@ -487,7 +487,7 @@ class LibraryRepository(
         }
     }
 
-    fun upgradeSaaSPlan(planType: SaaSPlanType, billingPeriod: BillingPeriod) {
+    fun upgradeSaaSPlan(planType: SaaSPlanType, billingPeriod: BillingPeriod, allowedBranches: Int = 1) {
         val calendar = Calendar.getInstance()
         calendar.time = Date()
         val daysToAdd = if (billingPeriod == BillingPeriod.MONTHLY) 28 else 168
@@ -499,9 +499,21 @@ class LibraryRepository(
             billingPeriod = billingPeriod,
             startDate = dateFormat.format(Date()),
             endDate = endStr,
-            isActive = true
+            isActive = true,
+            allowedBranchesCount = allowedBranches
         )
-        addAuditLog("SaaS Plan Upgraded", "Billing", "Upgraded to ${planType.displayName} ($billingPeriod, ending $endStr)")
+        addAuditLog("SaaS Plan Upgraded", "Billing", "Upgraded to ${planType.displayName} ($billingPeriod, ending $endStr) with $allowedBranches branches")
+        persistCurrentAccount()
+    }
+
+    fun addSaaSSubscriptionBranch() {
+        val sub = _saasSubscription.value
+        if (sub.planType != SaaSPlanType.BUSINESS) return
+
+        _saasSubscription.value = sub.copy(
+            allowedBranchesCount = sub.allowedBranchesCount + 1
+        )
+        addAuditLog("SaaS Plan Branch Added", "Billing", "Added another branch. Total allowed: ${sub.allowedBranchesCount + 1}")
         persistCurrentAccount()
     }
 

@@ -76,13 +76,13 @@ fun UpgradeModal(
                 ) {
                     Column {
                         Text(
-                            text = "Upgrade Library Space",
+                            text = "Upgrade Vidyara",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
                             color = WarmTextDark
                         )
                         Text(
-                            text = "Choose the plan that fits your library scale",
+                            text = "Choose the plan that fits your scale",
                             style = MaterialTheme.typography.bodySmall,
                             color = WarmTextMuted
                         )
@@ -331,7 +331,7 @@ fun UpgradeModal(
                     ) {
                         // Plan: FREE
                         PlanSelectionCard(
-                            title = "FREE PLAN",
+                            title = "VIDYARA FREE",
                             price = "₹0",
                             subtitle = "Forever basic library operations",
                             isSelected = selectedPlan == SaaSPlanType.FREE,
@@ -343,7 +343,7 @@ fun UpgradeModal(
                                 "Expense logging",
                                 "Basic financial report view",
                                 "Single branch access",
-                                "✕ WhatsApp Fee Due Alerts (Requires Premium/Business)"
+                                "✕ WhatsApp Fee Due Alerts (Requires Pro/Business)"
                             ),
                             onSelect = { selectedPlan = SaaSPlanType.FREE }
                         )
@@ -353,14 +353,14 @@ fun UpgradeModal(
                         // Plan: PREMIUM (2nd Plan)
                         val premiumPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹99/mo" else "₹399 / 6 mos"
                         PlanSelectionCard(
-                            title = "PREMIUM PLAN",
+                            title = "VIDYARA PRO",
                             badge = "POPULAR",
                             price = premiumPrice,
                             subtitle = "For single-library owners needing WhatsApp alerts & reports",
                             isSelected = selectedPlan == SaaSPlanType.PREMIUM,
                             isCurrent = currentPlan.planType == SaaSPlanType.PREMIUM,
                             features = listOf(
-                                "Everything in Free Plan",
+                                "Everything in Vidyara Free",
                                 "📲 WhatsApp Student Fee Due Alerts to Owner",
                                 "💬 1-Tap Student WhatsApp Fee Due Reminders",
                                 "Download & export Revenue reports",
@@ -384,14 +384,14 @@ fun UpgradeModal(
                             "₹${base + additional} / 6 mos"
                         }
                         PlanSelectionCard(
-                            title = "BUSINESS PLAN",
+                            title = "VIDYARA BUSINESS",
                             badge = "MULTI-BRANCH",
                             price = businessPrice,
                             subtitle = "For owners managing multiple library branches with full alerts",
                             isSelected = selectedPlan == SaaSPlanType.BUSINESS,
                             isCurrent = currentPlan.planType == SaaSPlanType.BUSINESS,
                             features = listOf(
-                                "Everything in Premium Plan",
+                                "Everything in Vidyara Pro",
                                 "📲 Multi-Branch WhatsApp Due Alerts to Owner",
                                 "💬 Bulk WhatsApp Student Fee Reminders",
                                 "Manage Multiple Library Branches",

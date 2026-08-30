@@ -158,7 +158,7 @@ fun LoginScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.LocalLibrary,
-                        contentDescription = "Library Space Logo",
+                        contentDescription = "Vidyara Logo",
                         tint = PureWhite,
                         modifier = Modifier.size(32.dp)
                     )
@@ -168,13 +168,13 @@ fun LoginScreen(
 
                 Column {
                     Text(
-                        text = "Library Space",
+                        text = "Vidyara",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                         color = WarmTextDark
                     )
                     Text(
-                        text = "Smart Library & Seat Management SaaS",
+                        text = "Complete Library Management, From One App",
                         style = MaterialTheme.typography.bodySmall,
                         color = WarmTextMuted,
                         fontSize = 11.sp

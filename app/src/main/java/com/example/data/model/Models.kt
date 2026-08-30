@@ -3,9 +3,9 @@ package com.example.data.model
 import java.util.UUID
 
 enum class SaaSPlanType(val displayName: String, val monthlyPrice: Int, val sixMonthPrice: Int) {
-    FREE("Free Plan", 0, 0),
-    PREMIUM("Premium Plan", 99, 399),
-    BUSINESS("Business Plan", 199, 999)
+    FREE("Vidyara Free", 0, 0),
+    PREMIUM("Vidyara Pro", 99, 399),
+    BUSINESS("Vidyara Business", 199, 999)
 }
 
 enum class BillingPeriod {

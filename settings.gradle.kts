@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "My Library"
+rootProject.name = "Vidyara"
 
 include(":app")

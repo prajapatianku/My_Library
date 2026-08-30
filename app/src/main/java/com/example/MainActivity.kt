@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
 
         try {
             val options = org.json.JSONObject()
-            options.put("name", "My Library App")
+            options.put("name", "Vidyara")
             val desc = if (isBranchPurchase) {
                 "Add additional branch (prorated)"
             } else if (isRenewal) {

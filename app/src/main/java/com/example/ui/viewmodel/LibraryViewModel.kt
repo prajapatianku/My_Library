@@ -346,7 +346,7 @@ class LibraryViewModel(
         closingTime: String
     ) {
         repository.completeOnboarding(name, phone, address, city, state, pincode, openingTime, closingTime)
-        _uiToastMessage.value = "Welcome to My Library! Your workspace is ready."
+        _uiToastMessage.value = "Welcome to Vidyara! Your workspace is ready."
     }
 
     fun switchBranch(branchId: String) {

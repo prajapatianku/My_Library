@@ -30,9 +30,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.model.Student
 import com.example.data.model.StudentStatus
+import com.example.data.model.Seat
 import com.example.ui.components.StatusBadge
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.LibraryViewModel
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -413,11 +418,24 @@ fun AddStudentDialog(
     var selectedShift by remember { mutableStateOf(shifts.firstOrNull()?.name ?: "Full Day") }
     var selectedSeat by remember { mutableStateOf("") }
     
+    val vacantSeats = remember(seats) {
+        seats.filter { it.status == com.example.data.model.SeatStatus.AVAILABLE }
+    }
+    var showSeatSelectionDialog by remember { mutableStateOf(false) }
+    
     // Auto-fill initial rate based on selected shift
     val defaultShiftPrice = remember(selectedShift, shifts) {
         shifts.find { it.name == selectedShift }?.defaultPrice ?: 1000
     }
     var monthlyFee by remember(defaultShiftPrice) { mutableStateOf(defaultShiftPrice.toString()) }
+
+    if (showSeatSelectionDialog) {
+        SeatSelectionDialog(
+            availableSeats = vacantSeats,
+            onSeatSelected = { selectedSeat = it },
+            onDismiss = { showSeatSelectionDialog = false }
+        )
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -523,15 +541,29 @@ fun AddStudentDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = selectedSeat,
-                        onValueChange = { selectedSeat = it },
-                        label = { Text("Seat (e.g. A-1)") },
-                        textStyle = AppInputTextStyle,
-                        colors = appOutlinedTextFieldColors(),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showSeatSelectionDialog = true }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedSeat,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Select Seat *") },
+                            placeholder = { Text("Tap to select") },
+                            textStyle = AppInputTextStyle,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = WarmTextDark,
+                                disabledBorderColor = Color(0xFFE5DECE),
+                                disabledLabelColor = WarmTextMuted,
+                                disabledContainerColor = PureWhite
+                            ),
+                            singleLine = true,
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     OutlinedTextField(
                         value = monthlyFee,
@@ -781,6 +813,91 @@ fun StudentDetailDialog(
                                         Text(text = "${p.paymentDate} • via ${p.paymentMethod}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Text(text = "₹${p.amount}", fontWeight = FontWeight.Bold, color = SuccessGreen)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SeatSelectionDialog(
+    availableSeats: List<Seat>,
+    onSeatSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.7f)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Select Vacant Seat",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = WarmTextDark
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (availableSeats.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No vacant seats available in this branch!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DangerRed,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(availableSeats) { seat ->
+                            Surface(
+                                modifier = Modifier
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, Color(0xFF22C55E), RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        onSeatSelected(seat.seatNumber)
+                                        onDismiss()
+                                    },
+                                color = Color(0xFFF0FDF4),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(
+                                        text = seat.seatNumber,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF15803D)
+                                    )
                                 }
                             }
                         }

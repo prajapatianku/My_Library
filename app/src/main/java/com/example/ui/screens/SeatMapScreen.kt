@@ -238,6 +238,9 @@ fun SeatActionDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 if (seat.status == SeatStatus.OCCUPIED) {
+                    val occupantStudent = students.find { it.id == seat.assignedStudentId || it.fullName.equals(seat.assignedStudentName, ignoreCase = true) }
+                    val occupantPhone = occupantStudent?.mobile ?: "Not Available"
+
                     // Occupant Info
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -246,7 +249,9 @@ fun SeatActionDialog(
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(text = "CURRENT OCCUPANT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = seat.assignedStudentName ?: "Student", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(text = "Name: ${seat.assignedStudentName ?: "Student"}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(text = "Mobile Phone: $occupantPhone", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                            Text(text = "Seat Number: Desk ${seat.seatNumber}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                             Text(text = "Shift: ${seat.assignedShiftName ?: "Full Day"}", style = MaterialTheme.typography.bodySmall)
                             Text(text = "Access valid till: ${seat.expiryDate ?: "Active"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

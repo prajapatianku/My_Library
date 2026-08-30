@@ -206,7 +206,7 @@ class LibraryRepository(
                     accountId = newAccId,
                     ownerProfile = newOwner,
                     library = newLib,
-                    branches = listOf(Branch(id = "branch_01", libraryId = newLib.id, name = "Main Campus", code = "BR-01", phone = phone, isPrimary = true)),
+                    branches = listOf(Branch(id = "branch_01", libraryId = newLib.id, name = "Primary", code = "BR-01", phone = phone, isPrimary = true)),
                     activeBranchId = "branch_01",
                     saasSubscription = SaaSSubscription(SaaSPlanType.FREE),
                     shifts = createDefaultShifts(60),
@@ -287,7 +287,7 @@ class LibraryRepository(
         val primaryBranch = Branch(
             id = "branch_01",
             libraryId = libId,
-            name = "Main Campus (${location.ifBlank { "Primary" }})",
+            name = location.ifBlank { "Primary" },
             code = "BR-01",
             address = address,
             phone = contactNumber.ifBlank { phone },
@@ -998,7 +998,7 @@ class LibraryRepository(
         return Branch(
             id = "branch_01",
             libraryId = "lib_01",
-            name = "Main Campus (Knowledge Park)",
+            name = "Knowledge Park III",
             code = "BR-01",
             address = "Plot 42, Knowledge Park III",
             phone = "+91 9876543210",

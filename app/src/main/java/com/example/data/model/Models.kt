@@ -94,7 +94,7 @@ data class Library(
 data class Branch(
     val id: String = "branch_01",
     val libraryId: String = "lib_default_01",
-    val name: String = "Main Campus (Knowledge Park)",
+    val name: String = "Knowledge Park III",
     val code: String = "BR-01",
     val address: String = "Plot 42, Knowledge Park III",
     val phone: String = "+91 9876543210",

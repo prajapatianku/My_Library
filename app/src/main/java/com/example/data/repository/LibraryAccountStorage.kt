@@ -479,7 +479,7 @@ class LibraryAccountStorage(private val context: Context?) {
                 Branch(
                     id = "branch_01",
                     libraryId = "lib_01",
-                    name = "Main Campus",
+                    name = "Knowledge Park III",
                     code = "BR-01",
                     address = "Main Road",
                     phone = "+91 9876543210",

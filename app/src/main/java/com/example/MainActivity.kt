@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.screens.*
 import com.example.ui.theme.*
@@ -30,7 +31,7 @@ enum class MainNavigationTab(
 ) {
     DASHBOARD("Home", Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
     STUDENTS("Students", Icons.Filled.People, Icons.Outlined.People),
-    ATTENDANCE("Attendance", Icons.Filled.AssignmentTurnedIn, Icons.Outlined.AssignmentTurnedIn),
+    ATTENDANCE("Check-In", Icons.Filled.AssignmentTurnedIn, Icons.Outlined.AssignmentTurnedIn),
     SEAT_MAP("Seats", Icons.Filled.Chair, Icons.Outlined.Chair),
     PAYMENTS("Finance", Icons.Filled.Payments, Icons.Outlined.Payments),
     REPORTS("Reports", Icons.Filled.BarChart, Icons.Outlined.BarChart),
@@ -210,8 +211,10 @@ fun MainApp(
                             },
                             label = {
                                 Text(
-                                    tab.title,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    text = tab.title,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 1
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(

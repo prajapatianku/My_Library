@@ -41,6 +41,10 @@ class LibraryViewModel(
     val isLoggedIn = repository.isLoggedIn
     val isOnboardingCompleted = repository.isOnboardingCompleted
 
+    init {
+        repository.checkSubscriptionStatus()
+    }
+
     // Separated & Filtered Branch-Specific States
     val library = combine(repository.library, repository.activeBranchId, repository.branches) { mainLib, activeId, branchList ->
         val activeBranch = branchList.find { it.id == activeId }
@@ -391,6 +395,26 @@ class LibraryViewModel(
         _showUpgradeModal.value = false
         _upgradeTargetFeature.value = null
         _uiToastMessage.value = "Upgraded to ${planType.displayName}! All features unlocked."
+    }
+
+    fun renewSaaS() {
+        repository.renewSaaSPlan()
+        _showUpgradeModal.value = false
+        _uiToastMessage.value = "Subscription renewed successfully!"
+    }
+
+    fun getSubscriptionDaysRemaining(): Int {
+        val sub = saasSubscription.value
+        if (sub.planType == SaaSPlanType.FREE) return -1
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val endDate = sdf.parse(sub.endDate) ?: return -1
+            val today = sdf.parse(sdf.format(Date())) ?: return -1
+            val diff = endDate.time - today.time
+            (diff / (1000 * 60 * 60 * 24)).toInt()
+        } catch (e: Exception) {
+            -1
+        }
     }
 
     fun updateLibraryDetails(

@@ -91,190 +91,319 @@ fun UpgradeModal(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Billing Period Toggle (Monthly vs 6-Month Save)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF6F0E7))
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Surface(
+                if (currentPlan.planType != SaaSPlanType.FREE) {
+                    val daysRemaining = remember(currentPlan) {
+                        viewModel.getSubscriptionDaysRemaining()
+                    }
+                    val canRenew = daysRemaining in 0..7
+
+                    Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { billingPeriod = BillingPeriod.MONTHLY },
-                        color = if (billingPeriod == BillingPeriod.MONTHLY) PureWhite else Color.Transparent,
-                        shape = RoundedCornerShape(10.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = "Monthly Billing",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (billingPeriod == BillingPeriod.MONTHLY) FontWeight.Bold else FontWeight.Normal,
-                            color = if (billingPeriod == BillingPeriod.MONTHLY) OrangePrimaryDark else WarmTextMuted,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-
-                    Surface(
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { billingPeriod = BillingPeriod.SIX_MONTH },
-                        color = if (billingPeriod == BillingPeriod.SIX_MONTH) PureWhite else Color.Transparent,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(20.dp))
+                                .border(1.5.dp, OrangePrimary, RoundedCornerShape(20.dp)),
+                            color = OrangePrimaryContainer.copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
-                            Text(
-                                text = "6 Months",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (billingPeriod == BillingPeriod.SIX_MONTH) FontWeight.Bold else FontWeight.Normal,
-                                color = if (billingPeriod == BillingPeriod.SIX_MONTH) OrangePrimaryDark else WarmTextMuted
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Surface(
-                                color = Color(0xFF16A34A),
-                                shape = RoundedCornerShape(6.dp)
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(
-                                    text = "SAVE 33%",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PureWhite,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = OrangePrimary,
+                                    modifier = Modifier.size(56.dp)
                                 )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "ACTIVE SUBSCRIPTION",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = OrangePrimaryDark
+                                )
+                                Text(
+                                    text = currentPlan.planType.displayName,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Black,
+                                    color = WarmTextDark
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                HorizontalDivider(color = OrangePrimary.copy(alpha = 0.2f))
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Billing Cycle: ${if (currentPlan.billingPeriod == BillingPeriod.MONTHLY) "Monthly (28 Days)" else "6 Months (168 Days)"}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = WarmTextDark
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Expires on: ${currentPlan.endDate}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = WarmTextDark
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                if (daysRemaining >= 0) {
+                                    Surface(
+                                        color = if (daysRemaining <= 3) DangerRed.copy(alpha = 0.1f) else Color(0xFFDCFCE7),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "$daysRemaining days remaining",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (daysRemaining <= 3) DangerRed else Color(0xFF15803D),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                // Scrollable Plan Cards
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Plan: FREE
-                    PlanSelectionCard(
-                        title = "FREE PLAN",
-                        price = "₹0",
-                        subtitle = "Forever basic library operations",
-                        isSelected = selectedPlan == SaaSPlanType.FREE,
-                        isCurrent = currentPlan.planType == SaaSPlanType.FREE,
-                        features = listOf(
-                            "Full student & seat management",
-                            "Daily shift & attendance tracking",
-                            "Payment collection & receipts",
-                            "Expense logging",
-                            "Basic financial report view",
-                            "Single branch access",
-                            "✕ WhatsApp Fee Due Alerts (Requires Premium/Business)"
-                        ),
-                        onSelect = { selectedPlan = SaaSPlanType.FREE }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Plan: PREMIUM (2nd Plan)
-                    val premiumPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹99/mo" else "₹399 / 6 mos"
-                    PlanSelectionCard(
-                        title = "PREMIUM PLAN",
-                        badge = "POPULAR",
-                        price = premiumPrice,
-                        subtitle = "For single-library owners needing WhatsApp alerts & reports",
-                        isSelected = selectedPlan == SaaSPlanType.PREMIUM,
-                        isCurrent = currentPlan.planType == SaaSPlanType.PREMIUM,
-                        features = listOf(
-                            "Everything in Free Plan",
-                            "📲 WhatsApp Student Fee Due Alerts to Owner",
-                            "💬 1-Tap Student WhatsApp Fee Due Reminders",
-                            "Download & export Revenue reports",
-                            "PDF & CSV Financial Exports",
-                            "Advanced Student Analytics & Trends",
-                            "Priority WhatsApp/Email Support"
-                        ),
-                        onSelect = { selectedPlan = SaaSPlanType.PREMIUM }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Plan: BUSINESS (3rd Plan)
-                    val businessPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹199/mo" else "₹999 / 6 mos"
-                    PlanSelectionCard(
-                        title = "BUSINESS PLAN",
-                        badge = "MULTI-BRANCH",
-                        price = businessPrice,
-                        subtitle = "For owners managing multiple library branches with full alerts",
-                        isSelected = selectedPlan == SaaSPlanType.BUSINESS,
-                        isCurrent = currentPlan.planType == SaaSPlanType.BUSINESS,
-                        features = listOf(
-                            "Everything in Premium Plan",
-                            "📲 Multi-Branch WhatsApp Due Alerts to Owner",
-                            "💬 Bulk WhatsApp Student Fee Reminders",
-                            "Manage Multiple Library Branches",
-                            "Instant Branch Switching",
-                            "Consolidated Multi-Branch Dashboard",
-                            "Centralized Owner Control & Audit"
-                        ),
-                        onSelect = { selectedPlan = SaaSPlanType.BUSINESS }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Bottom Action Button
-                if (selectedPlan == currentPlan.planType) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDCCFC0))
-                    ) {
-                        Text("Current Active Plan", color = WarmTextDark, fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            isProcessingPayment = true
-                            val activity = context as? MainActivity
-                            if (activity != null) {
-                                activity.startSaaSPayment(selectedPlan, billingPeriod)
-                                onDismiss()
-                            } else {
-                                // Fallback
-                                viewModel.upgradeSaaS(selectedPlan, billingPeriod)
-                                onDismiss()
-                            }
-                            isProcessingPayment = false
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = OrangePrimary
-                        ),
-                        enabled = !isProcessingPayment
-                    ) {
-                        if (isProcessingPayment) {
-                            CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp))
-                        } else {
+                    if (canRenew) {
+                        Button(
+                            onClick = {
+                                val activity = context as? MainActivity
+                                if (activity != null) {
+                                    activity.startSaaSPayment(currentPlan.planType, currentPlan.billingPeriod, isRenewal = true)
+                                    onDismiss()
+                                } else {
+                                    viewModel.renewSaaS()
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                        ) {
                             Text(
-                                text = "Activate ${selectedPlan.displayName} Now",
+                                text = "Renew ${currentPlan.planType.displayName} Now",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = PureWhite
                             )
+                        }
+                    } else {
+                        Button(
+                            onClick = {},
+                            enabled = false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE5DECE),
+                                disabledContainerColor = Color(0xFFE5DECE)
+                            )
+                        ) {
+                            Text(
+                                text = "Renewal available 7 days before expiry",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = WarmTextMuted
+                            )
+                        }
+                    }
+                } else {
+                    // Billing Period Toggle (Monthly vs 6-Month Save)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF6F0E7))
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { billingPeriod = BillingPeriod.MONTHLY },
+                            color = if (billingPeriod == BillingPeriod.MONTHLY) PureWhite else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = "Monthly Billing",
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (billingPeriod == BillingPeriod.MONTHLY) FontWeight.Bold else FontWeight.Normal,
+                                color = if (billingPeriod == BillingPeriod.MONTHLY) OrangePrimaryDark else WarmTextMuted,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+
+                        Surface(
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { billingPeriod = BillingPeriod.SIX_MONTH },
+                            color = if (billingPeriod == BillingPeriod.SIX_MONTH) PureWhite else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "6 Months",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (billingPeriod == BillingPeriod.SIX_MONTH) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (billingPeriod == BillingPeriod.SIX_MONTH) OrangePrimaryDark else WarmTextMuted
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Surface(
+                                    color = Color(0xFF16A34A),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "SAVE 33%",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PureWhite,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Scrollable Plan Cards
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Plan: FREE
+                        PlanSelectionCard(
+                            title = "FREE PLAN",
+                            price = "₹0",
+                            subtitle = "Forever basic library operations",
+                            isSelected = selectedPlan == SaaSPlanType.FREE,
+                            isCurrent = currentPlan.planType == SaaSPlanType.FREE,
+                            features = listOf(
+                                "Full student & seat management",
+                                "Daily shift & attendance tracking",
+                                "Payment collection & receipts",
+                                "Expense logging",
+                                "Basic financial report view",
+                                "Single branch access",
+                                "✕ WhatsApp Fee Due Alerts (Requires Premium/Business)"
+                            ),
+                            onSelect = { selectedPlan = SaaSPlanType.FREE }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Plan: PREMIUM (2nd Plan)
+                        val premiumPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹99/mo" else "₹399 / 6 mos"
+                        PlanSelectionCard(
+                            title = "PREMIUM PLAN",
+                            badge = "POPULAR",
+                            price = premiumPrice,
+                            subtitle = "For single-library owners needing WhatsApp alerts & reports",
+                            isSelected = selectedPlan == SaaSPlanType.PREMIUM,
+                            isCurrent = currentPlan.planType == SaaSPlanType.PREMIUM,
+                            features = listOf(
+                                "Everything in Free Plan",
+                                "📲 WhatsApp Student Fee Due Alerts to Owner",
+                                "💬 1-Tap Student WhatsApp Fee Due Reminders",
+                                "Download & export Revenue reports",
+                                "PDF & CSV Financial Exports",
+                                "Advanced Student Analytics & Trends",
+                                "Priority WhatsApp/Email Support"
+                            ),
+                            onSelect = { selectedPlan = SaaSPlanType.PREMIUM }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Plan: BUSINESS (3rd Plan)
+                        val businessPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹199/mo" else "₹999 / 6 mos"
+                        PlanSelectionCard(
+                            title = "BUSINESS PLAN",
+                            badge = "MULTI-BRANCH",
+                            price = businessPrice,
+                            subtitle = "For owners managing multiple library branches with full alerts",
+                            isSelected = selectedPlan == SaaSPlanType.BUSINESS,
+                            isCurrent = currentPlan.planType == SaaSPlanType.BUSINESS,
+                            features = listOf(
+                                "Everything in Premium Plan",
+                                "📲 Multi-Branch WhatsApp Due Alerts to Owner",
+                                "💬 Bulk WhatsApp Student Fee Reminders",
+                                "Manage Multiple Library Branches",
+                                "Instant Branch Switching",
+                                "Consolidated Multi-Branch Dashboard",
+                                "Centralized Owner Control & Audit"
+                            ),
+                            onSelect = { selectedPlan = SaaSPlanType.BUSINESS }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Bottom Action Button
+                    if (selectedPlan == currentPlan.planType) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDCCFC0))
+                        ) {
+                            Text("Current Active Plan", color = WarmTextDark, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                isProcessingPayment = true
+                                val activity = context as? MainActivity
+                                if (activity != null) {
+                                    activity.startSaaSPayment(selectedPlan, billingPeriod)
+                                    onDismiss()
+                                } else {
+                                    // Fallback
+                                    viewModel.upgradeSaaS(selectedPlan, billingPeriod)
+                                    onDismiss()
+                                }
+                                isProcessingPayment = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = OrangePrimary
+                            ),
+                            enabled = !isProcessingPayment
+                        ) {
+                            if (isProcessingPayment) {
+                                CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp))
+                            } else {
+                                Text(
+                                    text = "Activate ${selectedPlan.displayName} Now",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PureWhite
+                                )
+                            }
                         }
                     }
                 }

@@ -48,6 +48,9 @@ fun DashboardScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val activeBranch = branches.find { it.id == activeBranchId } ?: branches.firstOrNull()
+    val daysRemaining = remember(saasPlan) {
+        viewModel.getSubscriptionDaysRemaining()
+    }
 
     LazyColumn(
         modifier = modifier
@@ -55,6 +58,37 @@ fun DashboardScreen(
             .background(SlateBackground),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
+        if (daysRemaining in 0..7) {
+            item {
+                Surface(
+                    color = DangerRed,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.requestUpgrade("general") }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = PureWhite,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Your subscription expires in $daysRemaining days! Tap here to renew now.",
+                            color = PureWhite,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         // Top App Header
         item {
             Surface(

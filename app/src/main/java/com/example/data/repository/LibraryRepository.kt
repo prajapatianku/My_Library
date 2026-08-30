@@ -366,6 +366,7 @@ class LibraryRepository(
         _branches.value = account.branches
         _activeBranchId.value = account.activeBranchId
         _saasSubscription.value = account.saasSubscription
+        checkSubscriptionStatus()
         _shifts.value = account.shifts
         _libraryPlans.value = account.libraryPlans
         _seats.value = account.seats
@@ -437,15 +438,70 @@ class LibraryRepository(
         }
     }
 
+    fun checkSubscriptionStatus() {
+        val sub = _saasSubscription.value
+        if (sub.planType != SaaSPlanType.FREE) {
+            try {
+                val endDate = dateFormat.parse(sub.endDate)
+                val today = dateFormat.parse(dateFormat.format(Date()))
+                if (endDate != null && today != null && today.after(endDate)) {
+                    // Plan has expired! Revert to FREE.
+                    _saasSubscription.value = SaaSSubscription(
+                        planType = SaaSPlanType.FREE,
+                        billingPeriod = BillingPeriod.MONTHLY,
+                        startDate = dateFormat.format(Date()),
+                        endDate = "2099-12-31",
+                        isActive = true
+                    )
+                    addAuditLog("SaaS Plan Expired", "Billing", "Plan expired and reverted to Free")
+                    persistCurrentAccount()
+                }
+            } catch (e: Exception) {
+                // Ignore parse exceptions
+            }
+        }
+    }
+
+    fun renewSaaSPlan() {
+        val sub = _saasSubscription.value
+        if (sub.planType == SaaSPlanType.FREE) return
+
+        try {
+            val currentEndDate = dateFormat.parse(sub.endDate) ?: Date()
+            val calendar = Calendar.getInstance()
+            val baseDate = if (currentEndDate.after(Date())) currentEndDate else Date()
+            calendar.time = baseDate
+            
+            val daysToAdd = if (sub.billingPeriod == BillingPeriod.MONTHLY) 28 else 168
+            calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
+            val newEndStr = dateFormat.format(calendar.time)
+
+            _saasSubscription.value = sub.copy(
+                endDate = newEndStr,
+                isActive = true
+            )
+            addAuditLog("SaaS Plan Renewed", "Billing", "Renewed ${sub.planType.displayName} until $newEndStr")
+            persistCurrentAccount()
+        } catch (e: Exception) {
+            // Ignore parse exception
+        }
+    }
+
     fun upgradeSaaSPlan(planType: SaaSPlanType, billingPeriod: BillingPeriod) {
+        val calendar = Calendar.getInstance()
+        calendar.time = Date()
+        val daysToAdd = if (billingPeriod == BillingPeriod.MONTHLY) 28 else 168
+        calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
+        val endStr = dateFormat.format(calendar.time)
+
         _saasSubscription.value = SaaSSubscription(
             planType = planType,
             billingPeriod = billingPeriod,
             startDate = dateFormat.format(Date()),
-            endDate = if (billingPeriod == BillingPeriod.MONTHLY) "2026-09-25" else "2027-02-25",
+            endDate = endStr,
             isActive = true
         )
-        addAuditLog("SaaS Plan Upgraded", "Billing", "Upgraded to ${planType.displayName} ($billingPeriod)")
+        addAuditLog("SaaS Plan Upgraded", "Billing", "Upgraded to ${planType.displayName} ($billingPeriod, ending $endStr)")
         persistCurrentAccount()
     }
 

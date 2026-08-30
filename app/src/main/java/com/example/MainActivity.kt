@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
     companion object {
         var pendingUpgradePlan: SaaSPlanType? = null
         var pendingUpgradePeriod: BillingPeriod? = null
+        var isRenewalPayment: Boolean = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,9 +59,10 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         }
     }
 
-    fun startSaaSPayment(plan: SaaSPlanType, period: BillingPeriod) {
+    fun startSaaSPayment(plan: SaaSPlanType, period: BillingPeriod, isRenewal: Boolean = false) {
         pendingUpgradePlan = plan
         pendingUpgradePeriod = period
+        isRenewalPayment = isRenewal
 
         val amountInRupees = when (plan) {
             SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) 99 else 399
@@ -69,7 +71,11 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         }
 
         if (amountInRupees == 0) {
-            viewModel.upgradeSaaS(plan, period)
+            if (isRenewal) {
+                viewModel.renewSaaS()
+            } else {
+                viewModel.upgradeSaaS(plan, period)
+            }
             return
         }
 
@@ -79,7 +85,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         try {
             val options = org.json.JSONObject()
             options.put("name", "My Library App")
-            options.put("description", "SaaS ${plan.displayName} subscription (${period.name.lowercase().replace("_", " ")})")
+            options.put("description", "${if (isRenewal) "Renew" else "SaaS"} ${plan.displayName} subscription (${period.name.lowercase().replace("_", " ")})")
             options.put("image", "https://s3.amazonaws.com/rzp-mobile/images/rzp.png")
             options.put("theme.color", "#1E293B")
             options.put("currency", "INR")
@@ -106,11 +112,15 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         val targetPlan = pendingUpgradePlan
         val targetPeriod = pendingUpgradePeriod
         if (targetPlan != null && targetPeriod != null) {
-            viewModel.upgradeSaaS(targetPlan, targetPeriod)
-            Toast.makeText(this, "Payment successful! Upgraded to ${targetPlan.displayName}", Toast.LENGTH_LONG).show()
+            if (isRenewalPayment) {
+                viewModel.renewSaaS()
+            } else {
+                viewModel.upgradeSaaS(targetPlan, targetPeriod)
+            }
         }
         pendingUpgradePlan = null
         pendingUpgradePeriod = null
+        isRenewalPayment = false
     }
 
     override fun onPaymentError(code: Int, description: String?) {

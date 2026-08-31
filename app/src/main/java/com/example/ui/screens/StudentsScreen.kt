@@ -53,6 +53,7 @@ fun StudentsScreen(
     val shiftFilter by viewModel.studentShiftFilter.collectAsState()
     val selectedStudent by viewModel.selectedStudentForDetail.collectAsState()
     val showAddDialog by viewModel.showAddStudentDialog.collectAsState()
+    val isHindi by viewModel.isHindi.collectAsState()
 
     val shiftOptions = listOf("All", "Morning", "Afternoon", "Evening", "Full Day")
     val statusOptions = listOf("All", "Active", "Has Due", "Expired")
@@ -62,7 +63,7 @@ fun StudentsScreen(
             ExtendedFloatingActionButton(
                 onClick = { viewModel.showAddStudentDialog(true) },
                 icon = { Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null) },
-                text = { Text("Add Student", fontWeight = FontWeight.Bold) },
+                text = { Text(translate("Add Student", isHindi), fontWeight = FontWeight.Bold) },
                 containerColor = OrangePrimary,
                 contentColor = Color.White
             )
@@ -85,7 +86,7 @@ fun StudentsScreen(
                         value = searchQuery,
                         onValueChange = { viewModel.setStudentSearchQuery(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search by name, code, phone, or seat...") },
+                        placeholder = { Text(translate("Search Students...", isHindi)) },
                         leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = OrangePrimary) },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) {
@@ -115,7 +116,7 @@ fun StudentsScreen(
                             FilterChip(
                                 selected = statusFilter == status,
                                 onClick = { viewModel.setStudentStatusFilter(status) },
-                                label = { Text(status, fontWeight = if (statusFilter == status) FontWeight.Bold else FontWeight.Normal) },
+                                label = { Text(translate(status, isHindi), fontWeight = if (statusFilter == status) FontWeight.Bold else FontWeight.Normal) },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = OrangePrimaryContainer,
@@ -142,7 +143,7 @@ fun StudentsScreen(
                             FilterChip(
                                 selected = shiftFilter == shift,
                                 onClick = { viewModel.setStudentShiftFilter(shift) },
-                                label = { Text(shift, fontWeight = if (shiftFilter == shift) FontWeight.Bold else FontWeight.Normal) },
+                                label = { Text(translate(shift, isHindi), fontWeight = if (shiftFilter == shift) FontWeight.Bold else FontWeight.Normal) },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = WarmPeachSecondaryContainer,

@@ -45,6 +45,7 @@ fun DashboardScreen(
     val metrics by viewModel.dashboardMetrics.collectAsState()
     val students by viewModel.students.collectAsState()
     val requests by viewModel.registrationRequests.collectAsState()
+    val isHindi by viewModel.isHindi.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val activeBranch = branches.find { it.id == activeBranchId } ?: branches.firstOrNull()
@@ -198,8 +199,8 @@ fun DashboardScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Today's Collection",
+                                 Text(
+                                    text = translate("Today's Collection", isHindi),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White.copy(alpha = 0.9f)
@@ -247,7 +248,7 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(text = "This Month", fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
+                                Text(text = translate("This Month", isHindi), fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = "₹${metrics.monthlyCollection}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
@@ -257,7 +258,7 @@ fun DashboardScreen(
                                     .clickable { onNavigateToExpenses() }
                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                             ) {
-                                Text(text = "Expenses ↗", fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
+                                Text(text = translate("Expenses ↗", isHindi), fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = "₹${metrics.totalExpenses}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFE4E6))
                             }
@@ -267,7 +268,7 @@ fun DashboardScreen(
                                     .clickable { onNavigateToStudents() }
                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                             ) {
-                                Text(text = "Pending Dues ↗", fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
+                                Text(text = translate("Pending Dues ↗", isHindi), fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = "₹${metrics.pendingDues}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFEF08A))
                             }
@@ -281,7 +282,7 @@ fun DashboardScreen(
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    text = "Library Overview",
+                    text = translate("Library Overview", isHindi),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = WarmTextDark
@@ -293,7 +294,7 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     KpiMetricCard(
-                        title = "Active Students",
+                        title = translate("Active Students", isHindi),
                         value = "${metrics.activeStudentsCount}",
                         subtitle = "Total enrolled",
                         icon = Icons.Default.People,
@@ -304,7 +305,7 @@ fun DashboardScreen(
                     )
 
                     KpiMetricCard(
-                        title = "Present Today",
+                        title = translate("Present Today", isHindi),
                         value = "${metrics.presentTodayCount}",
                         subtitle = "${metrics.absentTodayCount} Absent",
                         icon = Icons.Default.CheckCircle,
@@ -322,7 +323,7 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     KpiMetricCard(
-                        title = "Seats Occupancy",
+                        title = translate("Seats Occupancy", isHindi),
                         value = "${metrics.occupiedSeatsCount}/${metrics.totalSeatsCount}",
                         subtitle = "${metrics.availableSeatsCount} seats available",
                         icon = Icons.Default.Chair,
@@ -333,7 +334,7 @@ fun DashboardScreen(
                     )
 
                     KpiMetricCard(
-                        title = "Fee Dues",
+                        title = translate("Fee Dues", isHindi),
                         value = "₹${metrics.pendingDues}",
                         subtitle = "${metrics.expiringCount} students pending",
                         icon = Icons.Default.AttachMoney,
@@ -351,7 +352,7 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(20.dp))
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    text = "Quick Actions",
+                    text = translate("Quick Actions", isHindi),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = WarmTextDark

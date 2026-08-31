@@ -100,6 +100,13 @@ class LibraryViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val lastGeneratedOtp = repository.lastGeneratedOtp
 
+    private val _isHindi = MutableStateFlow(false)
+    val isHindi = _isHindi.asStateFlow()
+
+    fun setHindiLanguage(enabled: Boolean) {
+        _isHindi.value = enabled
+    }
+
     // UI Search & Filter States
     private val _studentSearchQuery = MutableStateFlow("")
     val studentSearchQuery = _studentSearchQuery.asStateFlow()
@@ -480,7 +487,9 @@ class LibraryViewModel(
         assignedSeat: String,
         assignedShift: String,
         monthlyFee: Int,
-        initialDue: Int
+        initialDue: Int,
+        gender: String = "Male",
+        address: String = ""
     ): Boolean {
         val count = students.value.size + 1
         val code = "STU-" + String.format(Locale.US, "%03d", count)
@@ -495,7 +504,9 @@ class LibraryViewModel(
             assignedShiftName = assignedShift,
             monthlyFee = monthlyFee,
             dueAmount = initialDue,
-            branchId = repository.activeBranchId.value
+            branchId = repository.activeBranchId.value,
+            gender = gender,
+            address = address
         )
         val success = repository.addStudent(student)
         if (success) {

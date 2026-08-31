@@ -181,6 +181,7 @@ fun MainApp(
     val isOnboardingDone by viewModel.isOnboardingCompleted.collectAsState()
     val showUpgradeModal by viewModel.showUpgradeModal.collectAsState()
     val toastMessage by viewModel.uiToastMessage.collectAsState()
+    val isHindi by viewModel.isHindi.collectAsState()
 
     // Global Modal States
     val showAddStudentDialog by viewModel.showAddStudentDialog.collectAsState()
@@ -256,7 +257,7 @@ fun MainApp(
                             },
                             label = {
                                 Text(
-                                    text = tab.title,
+                                    text = com.example.ui.theme.translate(tab.title, isHindi),
                                     fontSize = 10.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     maxLines = 1

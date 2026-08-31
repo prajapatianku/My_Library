@@ -44,12 +44,15 @@ fun SettingsScreen(
     val auditLogs by viewModel.auditLogs.collectAsState()
     val showBranchDialog by viewModel.showBranchManagerDialog.collectAsState()
     val showQrDialog by viewModel.showQrDialog.collectAsState()
+    val isHindi by viewModel.isHindi.collectAsState()
 
     var showAuditLogsDialog by remember { mutableStateOf(false) }
     var showLibraryProfileDialog by remember { mutableStateOf(false) }
     var showShiftManagerDialog by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var showSupportDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -168,7 +171,7 @@ fun SettingsScreen(
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    text = "Library Operations",
+                    text = translate("Library Operations", isHindi),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = WarmTextDark
@@ -176,21 +179,21 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 SettingsItemCard(
-                    title = "Library Details & Timings",
+                    title = translate("Library Details & Timings", isHindi),
                     subtitle = "${library.name} • ${library.openingTime} - ${library.closingTime}",
                     icon = Icons.Default.Storefront,
                     onClick = { showLibraryProfileDialog = true }
                 )
 
                 SettingsItemCard(
-                    title = "Manage Library Shifts",
+                    title = translate("Manage Library Shifts", isHindi),
                     subtitle = "Configure shifts, operating timings & fee rates",
                     icon = Icons.Default.AccessTime,
                     onClick = { showShiftManagerDialog = true }
                 )
 
                 SettingsItemCard(
-                    title = "WhatsApp Fee Due Reminders",
+                    title = translate("WhatsApp Fee Due Reminders", isHindi),
                     subtitle = if (viewModel.hasFeature("whatsapp_fee_reminders")) "Active • Automated alerts to owner & students" else "Notify owner on due dates (Plan 2 & 3)",
                     icon = Icons.Default.Chat,
                     isLocked = !viewModel.hasFeature("whatsapp_fee_reminders"),
@@ -204,7 +207,7 @@ fun SettingsScreen(
                 )
 
                 SettingsItemCard(
-                    title = "Multi-Branch Management",
+                    title = translate("Multi-Branch Management", isHindi),
                     subtitle = "${branches.size} branch registered (Requires Business Plan)",
                     icon = Icons.Default.AccountTree,
                     isLocked = !viewModel.hasFeature("multi_branch"),
@@ -212,24 +215,38 @@ fun SettingsScreen(
                 )
 
                 SettingsItemCard(
-                    title = "Student Registration QR Code",
+                    title = translate("Student Registration QR Code", isHindi),
                     subtitle = "Allow walk-in students to register by scanning QR",
                     icon = Icons.Default.QrCode2,
                     onClick = { viewModel.showQrDialog(true) }
                 )
 
                 SettingsItemCard(
-                    title = "Audit & Security Logs",
+                    title = translate("Audit & Security Logs", isHindi),
                     subtitle = "Track financial & seat changes (${auditLogs.size} logs)",
                     icon = Icons.Default.History,
                     onClick = { showAuditLogsDialog = true }
                 )
 
                 SettingsItemCard(
-                    title = "Support & Helpdesk",
+                    title = translate("Support & Helpdesk", isHindi),
                     subtitle = "Get in touch with call, WhatsApp, or email support",
                     icon = Icons.Default.HelpOutline,
                     onClick = { showSupportDialog = true }
+                )
+
+                SettingsItemCard(
+                    title = translate("Language", isHindi),
+                    subtitle = if (isHindi) "हिन्दी (Hindi)" else "English",
+                    icon = Icons.Default.Language,
+                    onClick = { showLanguageDialog = true }
+                )
+
+                SettingsItemCard(
+                    title = translate("Terms & Conditions", isHindi),
+                    subtitle = "Terms of Service, Privacy Policy & Usage Rules",
+                    icon = Icons.Default.Description,
+                    onClick = { showTermsDialog = true }
                 )
             }
         }
@@ -378,6 +395,22 @@ fun SettingsScreen(
     // Support & Helpdesk Dialog
     if (showSupportDialog) {
         SupportDialog(onDismiss = { showSupportDialog = false })
+    }
+
+    // Language Selection Dialog
+    if (showLanguageDialog) {
+        LanguageDialog(
+            viewModel = viewModel,
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+
+    // Terms & Conditions Dialog
+    if (showTermsDialog) {
+        TermsDialog(
+            isHindi = isHindi,
+            onDismiss = { showTermsDialog = false }
+        )
     }
 }
 
@@ -529,6 +562,209 @@ fun SupportDialog(onDismiss: () -> Unit) {
                             Text(text = "mylibrary@gmail.com", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LanguageDialog(
+    viewModel: LibraryViewModel,
+    onDismiss: () -> Unit
+) {
+    val isHindi by viewModel.isHindi.collectAsState()
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = PureWhite,
+            modifier = Modifier.fillMaxWidth(0.9f)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = translate("Select Language", isHindi),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = WarmTextDark
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // English Option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            viewModel.setHindiLanguage(false)
+                            onDismiss()
+                        }
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "English",
+                        fontWeight = if (!isHindi) FontWeight.Bold else FontWeight.Normal,
+                        color = if (!isHindi) OrangePrimaryDark else WarmTextDark
+                    )
+                    if (!isHindi) {
+                        Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = OrangePrimary)
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFF1E9E0))
+
+                // Hindi Option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            viewModel.setHindiLanguage(true)
+                            onDismiss()
+                        }
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "हिन्दी (Hindi)",
+                        fontWeight = if (isHindi) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isHindi) OrangePrimaryDark else WarmTextDark
+                    )
+                    if (isHindi) {
+                        Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = OrangePrimary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = if (isHindi) "बंद करें" else "Close", color = WarmTextDark)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TermsDialog(
+    isHindi: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = PureWhite,
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.85f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = translate("Terms & Conditions", isHindi),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = WarmTextDark
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (isHindi) {
+                        Text(
+                            text = """
+                                विद्यारा प्लेटफॉर्म में स्वागत है!
+                                
+                                1. सेवा की शर्तें
+                                विद्यारा एक डिजिटल लाइब्रेरी और सीट प्रबंधन सेवा है। इस एप्लिकेशन का उपयोग करके, आप इन शर्तों से सहमत होते हैं।
+                                
+                                2. उपयोगकर्ता पंजीकरण और सुरक्षा
+                                लाइब्रेरी मालिकों को अपना सही विवरण प्रदान करना होगा। अपने खाते की गोपनीयता बनाए रखना आपकी ज़िम्मेदारी है।
+                                
+                                3. सदस्यता और भुगतान
+                                - सभी भुगतान रेज़रपे (Razorpay) के माध्यम से संसाधित किए जाते हैं।
+                                - एक महीने के प्लान की गणना 28 दिनों के आधार पर की जाती है।
+                                - प्लान समाप्त होने से 1 सप्ताह पहले आप इसे रिन्यू कर सकते हैं।
+                                - भुगतान गैर-वापसी योग्य हैं।
+                                
+                                4. छात्रों का डेटा
+                                लाइब्रेरी मालिक अपने छात्रों के डेटा के उपयोग और सुरक्षा के लिए पूर्ण रूप से उत्तरदायी हैं। विद्यारा किसी भी नुकसान के लिए ज़िम्मेदार नहीं है।
+                                
+                                5. नियमों में बदलाव
+                                हम किसी भी समय इन नियमों को संशोधित कर सकते हैं।
+                                
+                                धन्यवाद,
+                                विद्यारा टीम
+                            """.trimIndent(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = WarmTextDark,
+                            lineHeight = 20.sp
+                        )
+                    } else {
+                        Text(
+                            text = """
+                                Welcome to the Vidyara Platform!
+                                
+                                1. Terms of Service
+                                Vidyara provides digital library administration and seat-mapping SaaS tools. By accessing or using this app, you agree to comply with these terms.
+                                
+                                2. User Registration & Security
+                                Library owners must provide accurate credentials and contact details during registration. You are solely responsible for maintaining the privacy of your account.
+                                
+                                3. Subscriptions & Payments
+                                - All subscription fees are processed securely via Razorpay.
+                                - Plan durations are calculated on a base of 28 days per month.
+                                - Plan renewals can be initialized up to 1 week before expiration.
+                                - All subscription payments are final and non-refundable.
+                                
+                                4. Student Data & Privacy
+                                Library owners retain sole responsibility for the student data, attendance profiles, and transaction receipts logged onto the workspace database.
+                                
+                                5. Amendments
+                                We reserve the right to modify these terms at any time. Continued use of the app implies consent to updated guidelines.
+                                
+                                Thank you,
+                                The Vidyara Team
+                            """.trimIndent(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = WarmTextDark,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                ) {
+                    Text(text = if (isHindi) "सहमत हैं / Close" else "Agree & Close", color = PureWhite)
                 }
             }
         }

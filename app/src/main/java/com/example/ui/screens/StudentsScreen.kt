@@ -417,6 +417,8 @@ fun AddStudentDialog(
     var course by remember { mutableStateOf("UPSC / Govt Exam") }
     var selectedShift by remember { mutableStateOf(shifts.firstOrNull()?.name ?: "Full Day") }
     var selectedSeat by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("Male") }
+    var studentAddress by remember { mutableStateOf("") }
     
     val vacantSeats = remember(seats) {
         seats.filter { it.status == com.example.data.model.SeatStatus.AVAILABLE }
@@ -576,6 +578,54 @@ fun AddStudentDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Gender Selection
+                Text(
+                    text = "Gender *",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = WarmTextDark
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    listOf("Male", "Female", "Other").forEach { gen ->
+                        val isSel = gender == gen
+                        FilterChip(
+                            selected = isSel,
+                            onClick = { gender = gen },
+                            label = { Text(gen, fontSize = 11.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = OrangePrimaryContainer,
+                                selectedLabelColor = OrangePrimaryDark,
+                                containerColor = PureWhite
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSel,
+                                borderColor = if (isSel) OrangePrimary else Color(0xFFE5DECE)
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Address Input
+                OutlinedTextField(
+                    value = studentAddress,
+                    onValueChange = { studentAddress = it },
+                    label = { Text("Address") },
+                    textStyle = AppInputTextStyle,
+                    colors = appOutlinedTextFieldColors(),
+                    singleLine = false,
+                    maxLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
@@ -590,7 +640,9 @@ fun AddStudentDialog(
                                 assignedSeat = selectedSeat.trim(),
                                 assignedShift = selectedShift,
                                 monthlyFee = monthlyFee.toIntOrNull() ?: 1000,
-                                initialDue = monthlyFee.toIntOrNull() ?: 1000
+                                initialDue = monthlyFee.toIntOrNull() ?: 1000,
+                                gender = gender,
+                                address = studentAddress
                             )
                         }
                     },
@@ -681,6 +733,36 @@ fun StudentDetailDialog(
                                 Text(text = student.fullName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                                 Text(text = student.course, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
                                 Text(text = "Shift: ${student.assignedShiftName} | Seat: ${student.assignedSeatNumber.ifBlank { "Floating" }}", fontSize = 11.sp, color = AmberTertiary)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Profile Info: Gender & Address
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFBF8F3)),
+                    border = BorderStroke(1.dp, Color(0xFFE5DECE))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(text = "Gender", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                            Text(text = student.gender, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(text = "Contact", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                            Text(text = student.mobile, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                        }
+                        if (student.address.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(text = "Address", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(text = student.address, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = WarmTextDark)
                             }
                         }
                     }

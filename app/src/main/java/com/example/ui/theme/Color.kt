@@ -3,17 +3,17 @@ package com.example.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// Primary Orange & White Palette
-val OrangePrimary = Color(0xFFFF6B00)
-val OrangePrimaryDark = Color(0xFFEA580C)
-val OrangePrimaryLight = Color(0xFFFFA043)
-val OrangePrimaryContainer = Color(0xFFFFF4EC)
-val OrangeOnPrimaryContainer = Color(0xFF7C2D12)
-val OrangeSecondary = Color(0xFFFB923C)
+// Primary Ocean Blue & White Palette (#0077b6 base)
+val OrangePrimary = Color(0xFF0077B6)
+val OrangePrimaryDark = Color(0xFF005F9E)
+val OrangePrimaryLight = Color(0xFF0096C7)
+val OrangePrimaryContainer = Color(0xFFE0FAFF)
+val OrangeOnPrimaryContainer = Color(0xFF03045E)
+val OrangeSecondary = Color(0xFF00B4D8)
 
-val WarmPeachSecondary = Color(0xFFFB923C)
-val WarmPeachSecondaryContainer = Color(0xFFFFEDD5)
-val WarmPeachOnSecondaryContainer = Color(0xFF9A3412)
+val WarmPeachSecondary = Color(0xFF00B4D8)
+val WarmPeachSecondaryContainer = Color(0xFFE0FAFF)
+val WarmPeachOnSecondaryContainer = Color(0xFF03045E)
 
 val WarmAmberTertiary = Color(0xFFF59E0B)
 val WarmAmberTertiaryContainer = Color(0xFFFEF3C7)
@@ -66,28 +66,28 @@ val PurpleAccent = Color(0xFFA855F7)
 
 // Beautiful Gradients
 val VibrantOrangeGradient = Brush.horizontalGradient(
-    colors = listOf(Color(0xFFFF5400), Color(0xFFFF7A00), Color(0xFFFF9E3D))
+    colors = listOf(Color(0xFF0077B6), Color(0xFF0096C7), Color(0xFF00B4D8))
 )
 val SunsetOrangeGradient = Brush.horizontalGradient(
-    colors = listOf(Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFB923C))
+    colors = listOf(Color(0xFF005F9E), Color(0xFF0077B6), Color(0xFF0096C7))
 )
 val CardWarmGradient = Brush.verticalGradient(
-    colors = listOf(Color(0xFFFFFBF7), Color(0xFFFFFFFF))
+    colors = listOf(Color(0xFFF0F9FF), Color(0xFFFFFFFF))
 )
 val HeroBannerGradient = Brush.linearGradient(
-    colors = listOf(Color(0xFFFF5400), Color(0xFFFF7A1A), Color(0xFFFF9A3C))
+    colors = listOf(Color(0xFF0077B6), Color(0xFF0096C7), Color(0xFF00B4D8))
 )
 
-// Dark Palette (Warm Charcoal + Glowing Orange)
-val DarkNavyPrimary = Color(0xFFFF881A)
+// Dark Palette (Warm Charcoal + Ocean Blue)
+val DarkNavyPrimary = Color(0xFF00B4D8)
 val DarkNavyOnPrimary = Color(0xFF1C1917)
-val DarkNavyPrimaryContainer = Color(0xFF7C2D12)
-val DarkNavyOnPrimaryContainer = Color(0xFFFFEDD5)
+val DarkNavyPrimaryContainer = Color(0xFF03045E)
+val DarkNavyOnPrimaryContainer = Color(0xFFE0FAFF)
 
-val DarkTealSecondary = Color(0xFFFDBA74)
-val DarkTealOnSecondary = Color(0xFF431407)
-val DarkTealSecondaryContainer = Color(0xFF9A3412)
-val DarkTealOnSecondaryContainer = Color(0xFFFFEDD5)
+val DarkTealSecondary = Color(0xFF0096C7)
+val DarkTealOnSecondary = Color(0xFFE0FAFF)
+val DarkTealSecondaryContainer = Color(0xFF03045E)
+val DarkTealOnSecondaryContainer = Color(0xFFE0FAFF)
 
 val DarkAmberTertiary = Color(0xFFFBBF24)
 val DarkAmberOnTertiary = Color(0xFF451A03)

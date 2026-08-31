@@ -174,15 +174,7 @@ fun DashboardScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFFF5200),
-                                    Color(0xFFFF7A00),
-                                    Color(0xFFFFA043)
-                                )
-                            )
-                        )
+                        .background(HeroBannerGradient)
                         .padding(20.dp)
                 ) {
                     Column {

@@ -68,6 +68,9 @@ class LibraryRepository(
     private val _auditLogs = MutableStateFlow<List<AuditLog>>(generateDemoAuditLogs())
     val auditLogs: StateFlow<List<AuditLog>> = _auditLogs.asStateFlow()
 
+    private val _saasPurchaseHistory = MutableStateFlow<List<SaaSPurchaseRecord>>(generateDemoSaaSPurchases())
+    val saasPurchaseHistory: StateFlow<List<SaaSPurchaseRecord>> = _saasPurchaseHistory.asStateFlow()
+
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
@@ -217,7 +220,8 @@ class LibraryRepository(
                     payments = emptyList(),
                     expenses = emptyList(),
                     registrationRequests = emptyList(),
-                    auditLogs = listOf(AuditLog(action = "Workspace Initialized", entity = "System", details = "Fresh library setup for ${newLib.name}"))
+                    auditLogs = listOf(AuditLog(action = "Workspace Initialized", entity = "System", details = "Fresh library setup for ${newLib.name}")),
+                    saasPurchaseHistory = generateDemoSaaSPurchases()
                 )
                 storage.saveAccount(cleanAccount)
                 loadAccountState(cleanAccount)
@@ -341,7 +345,8 @@ class LibraryRepository(
             payments = emptyList(),          // Fresh & Clean!
             expenses = emptyList(),          // Fresh & Clean!
             registrationRequests = emptyList(), // Fresh & Clean!
-            auditLogs = initialAudit
+            auditLogs = initialAudit,
+            saasPurchaseHistory = emptyList()
         )
 
         // Save to persistent storage and update reactive StateFlows
@@ -376,6 +381,7 @@ class LibraryRepository(
         _expenses.value = account.expenses
         _registrationRequests.value = account.registrationRequests
         _auditLogs.value = account.auditLogs
+        _saasPurchaseHistory.value = account.saasPurchaseHistory
     }
 
     private fun persistCurrentAccount() {
@@ -395,7 +401,8 @@ class LibraryRepository(
                 payments = _payments.value,
                 expenses = _expenses.value,
                 registrationRequests = _registrationRequests.value,
-                auditLogs = _auditLogs.value
+                auditLogs = _auditLogs.value,
+                saasPurchaseHistory = _saasPurchaseHistory.value
             )
             storage.saveAccount(currentAccount)
 
@@ -476,7 +483,7 @@ class LibraryRepository(
         }
     }
 
-    fun renewSaaSPlan() {
+    fun renewSaaSPlan(razorpayPaymentId: String? = null) {
         val sub = _saasSubscription.value
         if (sub.planType == SaaSPlanType.FREE) return
 
@@ -494,6 +501,38 @@ class LibraryRepository(
                 endDate = newEndStr,
                 isActive = true
             )
+
+            val price = when (sub.planType) {
+                SaaSPlanType.PREMIUM -> if (sub.billingPeriod == BillingPeriod.MONTHLY) 99 else 399
+                SaaSPlanType.BUSINESS -> {
+                    val base = if (sub.billingPeriod == BillingPeriod.MONTHLY) 199 else 999
+                    val addBase = if (sub.billingPeriod == BillingPeriod.MONTHLY) 99 else 499
+                    base + ((sub.allowedBranchesCount - 1) * addBase)
+                }
+                else -> 0
+            }
+
+            if (price > 0) {
+                val invoiceCount = _saasPurchaseHistory.value.size + 1
+                val invNum = "INV-VDY-${SimpleDateFormat("yyyyMM", Locale.getDefault()).format(Date())}-${String.format(Locale.US, "%04d", invoiceCount)}"
+                val nowTime = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+                val rzpId = razorpayPaymentId?.ifBlank { "pay_sim_${System.currentTimeMillis().toString().takeLast(8)}" } ?: "pay_sim_${System.currentTimeMillis().toString().takeLast(8)}"
+                val periodLabel = if (sub.billingPeriod == BillingPeriod.MONTHLY) "28 Days" else "6 Months (168 Days)"
+                val productName = "Renewal: ${sub.planType.displayName} ($periodLabel)"
+
+                val purchaseRecord = SaaSPurchaseRecord(
+                    timestamp = nowTime,
+                    productName = productName,
+                    amount = price,
+                    status = "SUCCESS",
+                    razorpayPaymentId = rzpId,
+                    invoiceNumber = invNum,
+                    billingPeriod = periodLabel,
+                    branchCount = sub.allowedBranchesCount
+                )
+                _saasPurchaseHistory.value = listOf(purchaseRecord) + _saasPurchaseHistory.value
+            }
+
             addAuditLog("SaaS Plan Renewed", "Billing", "Renewed ${sub.planType.displayName} until $newEndStr")
             persistCurrentAccount()
         } catch (e: Exception) {
@@ -501,7 +540,12 @@ class LibraryRepository(
         }
     }
 
-    fun upgradeSaaSPlan(planType: SaaSPlanType, billingPeriod: BillingPeriod, allowedBranches: Int = 1) {
+    fun upgradeSaaSPlan(
+        planType: SaaSPlanType, 
+        billingPeriod: BillingPeriod, 
+        allowedBranches: Int = 1,
+        razorpayPaymentId: String? = null
+    ) {
         val calendar = Calendar.getInstance()
         calendar.time = Date()
         val daysToAdd = if (billingPeriod == BillingPeriod.MONTHLY) 28 else 168
@@ -516,17 +560,70 @@ class LibraryRepository(
             isActive = true,
             allowedBranchesCount = allowedBranches
         )
+
+        val price = when (planType) {
+            SaaSPlanType.PREMIUM -> if (billingPeriod == BillingPeriod.MONTHLY) 99 else 399
+            SaaSPlanType.BUSINESS -> {
+                val base = if (billingPeriod == BillingPeriod.MONTHLY) 199 else 999
+                val addBase = if (billingPeriod == BillingPeriod.MONTHLY) 99 else 499
+                base + ((allowedBranches - 1) * addBase)
+            }
+            else -> 0
+        }
+
+        if (price > 0) {
+            val invoiceCount = _saasPurchaseHistory.value.size + 1
+            val invNum = "INV-VDY-${SimpleDateFormat("yyyyMM", Locale.getDefault()).format(Date())}-${String.format(Locale.US, "%04d", invoiceCount)}"
+            val nowTime = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+            val rzpId = razorpayPaymentId?.ifBlank { "pay_sim_${System.currentTimeMillis().toString().takeLast(8)}" } ?: "pay_sim_${System.currentTimeMillis().toString().takeLast(8)}"
+            val periodLabel = if (billingPeriod == BillingPeriod.MONTHLY) "28 Days" else "6 Months (168 Days)"
+            val branchLabel = if (allowedBranches > 1) " for $allowedBranches branches" else ""
+            val productName = "${planType.displayName} ($periodLabel)$branchLabel"
+
+            val purchaseRecord = SaaSPurchaseRecord(
+                timestamp = nowTime,
+                productName = productName,
+                amount = price,
+                status = "SUCCESS",
+                razorpayPaymentId = rzpId,
+                invoiceNumber = invNum,
+                billingPeriod = periodLabel,
+                branchCount = allowedBranches
+            )
+            _saasPurchaseHistory.value = listOf(purchaseRecord) + _saasPurchaseHistory.value
+        }
+
         addAuditLog("SaaS Plan Upgraded", "Billing", "Upgraded to ${planType.displayName} ($billingPeriod, ending $endStr) with $allowedBranches branches")
         persistCurrentAccount()
     }
 
-    fun addSaaSSubscriptionBranch() {
+    fun addSaaSSubscriptionBranch(razorpayPaymentId: String? = null, proratedAmount: Int = 0) {
         val sub = _saasSubscription.value
         if (sub.planType != SaaSPlanType.BUSINESS) return
 
         _saasSubscription.value = sub.copy(
             allowedBranchesCount = sub.allowedBranchesCount + 1
         )
+
+        if (proratedAmount > 0) {
+            val invoiceCount = _saasPurchaseHistory.value.size + 1
+            val invNum = "INV-VDY-${SimpleDateFormat("yyyyMM", Locale.getDefault()).format(Date())}-${String.format(Locale.US, "%04d", invoiceCount)}"
+            val nowTime = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+            val rzpId = razorpayPaymentId?.ifBlank { "pay_sim_${System.currentTimeMillis().toString().takeLast(8)}" } ?: "pay_sim_${System.currentTimeMillis().toString().takeLast(8)}"
+
+            val purchaseRecord = SaaSPurchaseRecord(
+                timestamp = nowTime,
+                productName = "Additional Branch Add-on (Prorated)",
+                amount = proratedAmount,
+                status = "SUCCESS",
+                razorpayPaymentId = rzpId,
+                invoiceNumber = invNum,
+                billingPeriod = "Prorated to cycle",
+                branchCount = 1
+            )
+            _saasPurchaseHistory.value = listOf(purchaseRecord) + _saasPurchaseHistory.value
+        }
+
         addAuditLog("SaaS Plan Branch Added", "Billing", "Added another branch. Total allowed: ${sub.allowedBranchesCount + 1}")
         persistCurrentAccount()
     }
@@ -1297,8 +1394,8 @@ class LibraryRepository(
                 studentCode = "STU-006",
                 amount = 1200,
                 paymentDate = "2026-08-18",
-                paymentMethod = PaymentMethod.BANK_TRANSFER,
-                transactionId = "IMPS20260818004",
+                paymentMethod = PaymentMethod.UPI,
+                transactionId = "UPI20260818004",
                 receiptNumber = "REC-2026-0104",
                 notes = "Monthly fee via IMPS transfer",
                 shiftName = "Full Day",
@@ -1407,6 +1504,21 @@ class LibraryRepository(
             AuditLog(action = "System Initialized", entity = "Library", details = "Saraswati Study Point onboarded", timestamp = "2026-08-01 09:00 AM"),
             AuditLog(action = "Fee Collected", entity = "Payment", details = "₹1,200 collected for Aryan Patel (REC-0810)", timestamp = "2026-08-25 08:30 AM"),
             AuditLog(action = "Seat Assigned", entity = "Seat", details = "Seat A-01 assigned to Aryan Patel (Full Day)", timestamp = "2026-08-01 10:00 AM")
+        )
+    }
+
+    private fun generateDemoSaaSPurchases(): List<SaaSPurchaseRecord> {
+        return listOf(
+            SaaSPurchaseRecord(
+                timestamp = "01 Aug 2026, 10:15 AM",
+                productName = "Vidyara Pro (28 Days)",
+                amount = 99,
+                status = "SUCCESS",
+                razorpayPaymentId = "pay_Oq7K9bL3vM1zW8",
+                invoiceNumber = "INV-VDY-202608-0001",
+                billingPeriod = "28 Days",
+                branchCount = 1
+            )
         )
     }
 }

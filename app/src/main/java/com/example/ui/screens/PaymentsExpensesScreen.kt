@@ -377,7 +377,7 @@ fun CollectFeeDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    listOf(PaymentMethod.UPI, PaymentMethod.CASH, PaymentMethod.CARD, PaymentMethod.BANK_TRANSFER).forEach { method ->
+                    listOf(PaymentMethod.UPI, PaymentMethod.CASH, PaymentMethod.CARD).forEach { method ->
                         FilterChip(
                             selected = selectedMethod == method,
                             onClick = { selectedMethod = method },

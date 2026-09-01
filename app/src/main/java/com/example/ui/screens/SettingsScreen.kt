@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.model.SaaSPlanType
+import com.example.data.model.SaaSPurchaseRecord
 import com.example.ui.components.PlanBadge
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.LibraryViewModel
@@ -36,16 +38,20 @@ fun SettingsScreen(
     viewModel: LibraryViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val owner by viewModel.ownerProfile.collectAsState()
     val library by viewModel.library.collectAsState()
     val branches by viewModel.branches.collectAsState()
     val activeBranchId by viewModel.activeBranchId.collectAsState()
     val saasPlan by viewModel.saasSubscription.collectAsState()
+    val saasPurchases by viewModel.saasPurchaseHistory.collectAsState()
     val auditLogs by viewModel.auditLogs.collectAsState()
     val showBranchDialog by viewModel.showBranchManagerDialog.collectAsState()
     val showQrDialog by viewModel.showQrDialog.collectAsState()
     val isHindi by viewModel.isHindi.collectAsState()
 
+    var showPaymentHistoryDialog by remember { mutableStateOf(false) }
+    var selectedInvoiceForPreview by remember { mutableStateOf<SaaSPurchaseRecord?>(null) }
     var showAuditLogsDialog by remember { mutableStateOf(false) }
     var showLibraryProfileDialog by remember { mutableStateOf(false) }
     var showShiftManagerDialog by remember { mutableStateOf(false) }
@@ -122,45 +128,90 @@ fun SettingsScreen(
 
         item { Spacer(modifier = Modifier.height(14.dp)) }
 
-        // Section: SaaS Subscription & Plan Upgrade
+        // Section: SaaS Subscription & Plan Upgrade + Payment History
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .clickable { viewModel.requestUpgrade("settings") },
+                    .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                colors = CardDefaults.cardColors(containerColor = NavyPrimary)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "My Library Subscription",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PureWhite
-                        )
-                        Text(
-                            text = "Current: ${saasPlan.planType.displayName} (Status: Active)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = PureWhite.copy(alpha = 0.9f)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Tap to view plans, pricing & upgrade features",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = WarmPeachSecondaryContainer,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Vidyara Subscription",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PureWhite
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = if (saasPlan.planType == SaaSPlanType.FREE) Color(0xFF64748B) else Color(0xFF16A34A),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = saasPlan.planType.displayName.uppercase(),
+                                        color = PureWhite,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val daysRemaining = viewModel.getSubscriptionDaysRemaining()
+                            val validityText = if (saasPlan.planType == SaaSPlanType.FREE) {
+                                "Free Tier • Up to 20 Students"
+                            } else if (daysRemaining >= 0) {
+                                "Valid until ${saasPlan.endDate} ($daysRemaining days remaining)"
+                            } else {
+                                "Valid until ${saasPlan.endDate}"
+                            }
+                            Text(
+                                text = validityText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PureWhite.copy(alpha = 0.85f),
+                                fontSize = 12.sp
+                            )
+                        }
                     }
-                    Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = PureWhite)
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.requestUpgrade("settings") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                        ) {
+                            Icon(imageVector = Icons.Default.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Upgrade Plan", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                        }
+
+                        OutlinedButton(
+                            onClick = { showPaymentHistoryDialog = true },
+                            modifier = Modifier.weight(1.15f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.6f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PureWhite)
+                        ) {
+                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Payment History", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                        }
+                    }
                 }
             }
         }
@@ -226,6 +277,13 @@ fun SettingsScreen(
                     subtitle = "Track financial & seat changes (${auditLogs.size} logs)",
                     icon = Icons.Default.History,
                     onClick = { showAuditLogsDialog = true }
+                )
+
+                SettingsItemCard(
+                    title = "Subscription Invoices & Payment History",
+                    subtitle = "View Razorpay transaction IDs & download official tax invoices",
+                    icon = Icons.Default.ReceiptLong,
+                    onClick = { showPaymentHistoryDialog = true }
                 )
 
                 SettingsItemCard(
@@ -389,6 +447,27 @@ fun SettingsScreen(
         ShiftManagerDialog(
             viewModel = viewModel,
             onDismiss = { showShiftManagerDialog = false }
+        )
+    }
+
+    // Subscription Payment History Dialog
+    if (showPaymentHistoryDialog) {
+        SaaSPaymentHistoryDialog(
+            viewModel = viewModel,
+            purchases = saasPurchases,
+            onDismiss = { showPaymentHistoryDialog = false },
+            onPreviewInvoice = { record ->
+                selectedInvoiceForPreview = record
+            }
+        )
+    }
+
+    // Invoice Preview Dialog
+    selectedInvoiceForPreview?.let { record ->
+        SaaSInvoicePreviewDialog(
+            record = record,
+            viewModel = viewModel,
+            onDismiss = { selectedInvoiceForPreview = null }
         )
     }
 
@@ -1714,6 +1793,392 @@ fun ShiftManagerDialog(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SaaSPaymentHistoryDialog(
+    viewModel: LibraryViewModel,
+    purchases: List<SaaSPurchaseRecord>,
+    onDismiss: () -> Unit,
+    onPreviewInvoice: (SaaSPurchaseRecord) -> Unit
+) {
+    val context = LocalContext.current
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = PureWhite,
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.85f),
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ReceiptLong,
+                                contentDescription = null,
+                                tint = NavyPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Subscription Payments",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black,
+                                color = WarmTextDark
+                            )
+                        }
+                        Text(
+                            text = "Verified Razorpay transactions & tax invoices",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = WarmTextMuted
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                if (purchases.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Receipt,
+                                contentDescription = null,
+                                tint = Color(0xFFCBD5E1),
+                                modifier = Modifier.size(54.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No Online Subscription Purchases Yet",
+                                fontWeight = FontWeight.Bold,
+                                color = WarmTextDark,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "When you upgrade or renew via Razorpay, your payment history and official GST invoices will appear here.",
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = WarmTextMuted,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 24.dp)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(purchases) { p ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFBF9F5)),
+                                border = BorderStroke(1.dp, Color(0xFFE5DECE))
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    // Row 1: Product Name & Status Badge
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = p.productName,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = WarmTextDark,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Surface(
+                                            color = Color(0xFFDCFCE7),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = p.status.uppercase(),
+                                                color = Color(0xFF16A34A),
+                                                fontWeight = FontWeight.Black,
+                                                fontSize = 10.sp,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Row 2: Amount & Timestamp
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text(text = "Amount Paid", fontSize = 11.sp, color = WarmTextMuted)
+                                            Text(
+                                                text = "₹${p.amount}",
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 16.sp,
+                                                color = NavyPrimary
+                                            )
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(text = "Timestamp", fontSize = 11.sp, color = WarmTextMuted)
+                                            Text(
+                                                text = p.timestamp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.sp,
+                                                color = WarmTextDark
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    HorizontalDivider(color = Color(0xFFE5DECE).copy(alpha = 0.6f))
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Row 3: Razorpay Ref No
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(text = "Razorpay Ref. No.", fontSize = 10.sp, color = WarmTextMuted)
+                                            Text(
+                                                text = p.razorpayPaymentId,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF475569)
+                                            )
+                                        }
+                                        Text(
+                                            text = p.invoiceNumber,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = OrangePrimaryDark
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    // Action Buttons
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { onPreviewInvoice(p) },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(vertical = 4.dp),
+                                            border = BorderStroke(1.dp, NavyPrimary),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyPrimary)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("View Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        Button(
+                                            onClick = { viewModel.downloadOrShareSaaSInvoice(context, p) },
+                                            modifier = Modifier.weight(1.1f),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(vertical = 4.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Download / Share", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SaaSInvoicePreviewDialog(
+    record: SaaSPurchaseRecord,
+    viewModel: LibraryViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val owner by viewModel.ownerProfile.collectAsState()
+    val lib by viewModel.library.collectAsState()
+
+    val subtotal = (record.amount * 100) / 118
+    val gst = record.amount - subtotal
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = PureWhite,
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.85f),
+            shadowElevation = 10.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "VIDYARA TAX INVOICE",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = NavyPrimary
+                        )
+                        Text(
+                            text = "Invoice: ${record.invoiceNumber}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = OrangePrimaryDark
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Invoice Meta Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "Date & Time:", fontSize = 11.sp, color = WarmTextMuted)
+                                Text(text = record.timestamp, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "Status:", fontSize = 11.sp, color = WarmTextMuted)
+                                Text(text = "PAID (Razorpay Verified)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "Razorpay Ref ID:", fontSize = 11.sp, color = WarmTextMuted)
+                                Text(text = record.razorpayPaymentId, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Billed To / Library Details
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(text = "BILLED TO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = WarmTextMuted)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = lib.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                            Text(text = "Owner: ${owner.fullName} (${owner.phone})", fontSize = 11.sp, color = WarmTextDark)
+                            Text(text = "${lib.address}, ${lib.city}", fontSize = 11.sp, color = WarmTextMuted)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Item Description & Pricing
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(text = "SUBSCRIPTION PARTICULARS", fontSize = 11.sp, fontWeight = FontWeight.Black, color = WarmTextMuted)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(text = record.productName, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = WarmTextDark)
+                                    Text(text = "Period: ${record.billingPeriod} • ${record.branchCount} Branch(es)", fontSize = 10.sp, color = WarmTextMuted)
+                                }
+                                Text(text = "₹${record.amount}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NavyPrimary)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = Color(0xFFE2E8F0))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "Taxable Value:", fontSize = 11.sp, color = WarmTextMuted)
+                                Text(text = "₹$subtotal", fontSize = 11.sp, color = WarmTextDark)
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "GST (18% inclusive):", fontSize = 11.sp, color = WarmTextMuted)
+                                Text(text = "₹$gst", fontSize = 11.sp, color = WarmTextDark)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "Total Paid:", fontSize = 13.sp, fontWeight = FontWeight.Black, color = WarmTextDark)
+                                Text(text = "₹${record.amount}", fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF16A34A))
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Button(
+                    onClick = { viewModel.downloadOrShareSaaSInvoice(context, record) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                ) {
+                    Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = PureWhite, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Download / Share Invoice (PDF/Text)", fontWeight = FontWeight.Bold, color = PureWhite)
                 }
             }
         }

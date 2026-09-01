@@ -22,7 +22,8 @@ data class SavedLibraryAccount(
     val payments: List<StudentPayment>,
     val expenses: List<Expense>,
     val registrationRequests: List<RegistrationRequest>,
-    val auditLogs: List<AuditLog>
+    val auditLogs: List<AuditLog>,
+    val saasPurchaseHistory: List<SaaSPurchaseRecord> = emptyList()
 )
 
 class LibraryAccountStorage(private val context: Context?) {
@@ -156,7 +157,27 @@ class LibraryAccountStorage(private val context: Context?) {
         obj.put("expenses", serializeExpenses(acc.expenses))
         obj.put("registrationRequests", serializeRequests(acc.registrationRequests))
         obj.put("auditLogs", serializeAuditLogs(acc.auditLogs))
+        obj.put("saasPurchaseHistory", serializePurchases(acc.saasPurchaseHistory))
         return obj
+    }
+
+    private fun serializePurchases(list: List<SaaSPurchaseRecord>): JSONArray {
+        val arr = JSONArray()
+        list.forEach { p ->
+            val o = JSONObject().apply {
+                put("id", p.id)
+                put("timestamp", p.timestamp)
+                put("productName", p.productName)
+                put("amount", p.amount)
+                put("status", p.status)
+                put("razorpayPaymentId", p.razorpayPaymentId)
+                put("invoiceNumber", p.invoiceNumber)
+                put("billingPeriod", p.billingPeriod)
+                put("branchCount", p.branchCount)
+            }
+            arr.put(o)
+        }
+        return arr
     }
 
     private fun serializeOwner(o: OwnerProfile): JSONObject {
@@ -433,8 +454,31 @@ class LibraryAccountStorage(private val context: Context?) {
             payments = deserializePayments(obj.optJSONArray("payments")),
             expenses = deserializeExpenses(obj.optJSONArray("expenses")),
             registrationRequests = deserializeRequests(obj.optJSONArray("registrationRequests")),
-            auditLogs = deserializeAuditLogs(obj.optJSONArray("auditLogs"))
+            auditLogs = deserializeAuditLogs(obj.optJSONArray("auditLogs")),
+            saasPurchaseHistory = deserializePurchases(obj.optJSONArray("saasPurchaseHistory"))
         )
+    }
+
+    private fun deserializePurchases(arr: JSONArray?): List<SaaSPurchaseRecord> {
+        if (arr == null || arr.length() == 0) return emptyList()
+        val list = mutableListOf<SaaSPurchaseRecord>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            list.add(
+                SaaSPurchaseRecord(
+                    id = o.optString("id", UUID.randomUUID().toString()),
+                    timestamp = o.optString("timestamp", ""),
+                    productName = o.optString("productName", "Vidyara Subscription"),
+                    amount = o.optInt("amount", 0),
+                    status = o.optString("status", "SUCCESS"),
+                    razorpayPaymentId = o.optString("razorpayPaymentId", ""),
+                    invoiceNumber = o.optString("invoiceNumber", ""),
+                    billingPeriod = o.optString("billingPeriod", "Monthly"),
+                    branchCount = o.optInt("branchCount", 1)
+                )
+            )
+        }
+        return list
     }
 
     private fun deserializeOwner(o: JSONObject?): OwnerProfile {

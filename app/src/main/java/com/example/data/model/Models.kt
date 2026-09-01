@@ -290,3 +290,15 @@ data class SaaSSubscription(
     val isActive: Boolean = true,
     val allowedBranchesCount: Int = 1
 )
+
+data class SaaSPurchaseRecord(
+    val id: String = UUID.randomUUID().toString(),
+    val timestamp: String,
+    val productName: String,
+    val amount: Int,
+    val status: String = "SUCCESS",
+    val razorpayPaymentId: String,
+    val invoiceNumber: String,
+    val billingPeriod: String = "Monthly",
+    val branchCount: Int = 1
+)

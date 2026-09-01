@@ -36,6 +36,7 @@ class LibraryViewModel(
     val branches = repository.branches
     val activeBranchId = repository.activeBranchId
     val saasSubscription = repository.saasSubscription
+    val saasPurchaseHistory = repository.saasPurchaseHistory
     val registrationRequests = repository.registrationRequests
     val auditLogs = repository.auditLogs
     val isLoggedIn = repository.isLoggedIn
@@ -432,15 +433,21 @@ class LibraryViewModel(
         }
     }
 
-    fun upgradeSaaS(planType: SaaSPlanType, period: BillingPeriod, allowedBranches: Int = 1) {
-        repository.upgradeSaaSPlan(planType, period, allowedBranches)
+    fun upgradeSaaS(
+        planType: SaaSPlanType, 
+        period: BillingPeriod, 
+        allowedBranches: Int = 1,
+        razorpayPaymentId: String? = null
+    ) {
+        repository.upgradeSaaSPlan(planType, period, allowedBranches, razorpayPaymentId)
         _showUpgradeModal.value = false
         _upgradeTargetFeature.value = null
         _uiToastMessage.value = "Upgraded to ${planType.displayName}! All features unlocked."
     }
 
-    fun purchaseAdditionalBranch() {
-        repository.addSaaSSubscriptionBranch()
+    fun purchaseAdditionalBranch(razorpayPaymentId: String? = null) {
+        val proratedPrice = calculateProratedBranchPrice()
+        repository.addSaaSSubscriptionBranch(razorpayPaymentId, proratedPrice)
         _showUpgradeModal.value = false
         _uiToastMessage.value = "Additional branch added to your subscription successfully!"
     }
@@ -464,10 +471,74 @@ class LibraryViewModel(
         return proratedPrice.coerceAtLeast(1)
     }
 
-    fun renewSaaS() {
-        repository.renewSaaSPlan()
+    fun renewSaaS(razorpayPaymentId: String? = null) {
+        repository.renewSaaSPlan(razorpayPaymentId)
         _showUpgradeModal.value = false
         _uiToastMessage.value = "Subscription renewed successfully!"
+    }
+
+    fun generateSaaSInvoiceText(record: SaaSPurchaseRecord): String {
+        val owner = ownerProfile.value
+        val lib = repository.library.value
+
+        val sb = StringBuilder()
+        sb.append("========================================\n")
+        sb.append("🏛️ VIDYARA - OFFICIAL TAX INVOICE\n")
+        sb.append("Vidyara Technologies Pvt. Ltd.\n")
+        sb.append("========================================\n\n")
+
+        sb.append("📄 INVOICE DETAILS:\n")
+        sb.append("• Invoice No: ${record.invoiceNumber}\n")
+        sb.append("• Date & Time: ${record.timestamp}\n")
+        sb.append("• Payment Status: ${record.status} (Paid)\n")
+        sb.append("• Razorpay Ref No: ${record.razorpayPaymentId}\n\n")
+
+        sb.append("👤 BILLED TO:\n")
+        sb.append("• Library Name: ${lib.name}\n")
+        sb.append("• Owner Name: ${owner.fullName}\n")
+        sb.append("• Phone: ${owner.phone}\n")
+        sb.append("• Email: ${owner.email}\n")
+        sb.append("• Address: ${lib.address}, ${lib.city}, ${lib.state} - ${lib.pincode}\n\n")
+
+        sb.append("----------------------------------------\n")
+        sb.append("📦 ITEM DESCRIPTION:\n")
+        sb.append("----------------------------------------\n")
+        sb.append("1. ${record.productName}\n")
+        sb.append("   - Duration / Period: ${record.billingPeriod}\n")
+        sb.append("   - Active Branches: ${record.branchCount}\n")
+        sb.append("   - Access: Unlimited Seats, WhatsApp Alerts & Cloud Backup\n\n")
+
+        val subtotal = (record.amount * 100) / 118
+        val gst = record.amount - subtotal
+
+        sb.append("----------------------------------------\n")
+        sb.append("💰 PAYMENT BREAKUP (INR):\n")
+        sb.append("• Base Amount: ₹$subtotal\n")
+        sb.append("• GST (18% inclusive): ₹$gst\n")
+        sb.append("• Total Amount Paid: ₹${record.amount}\n")
+        sb.append("----------------------------------------\n\n")
+
+        sb.append("✅ Payment Mode: Razorpay Secured Online Payment\n")
+        sb.append("💡 Support: support@vidyara.com | www.vidyara.com\n")
+        sb.append("========================================\n")
+        sb.append("Thank you for choosing Vidyara to power your library!\n")
+        return sb.toString()
+    }
+
+    fun downloadOrShareSaaSInvoice(context: android.content.Context, record: SaaSPurchaseRecord) {
+        val invoiceText = generateSaaSInvoiceText(record)
+        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "Vidyara Invoice - ${record.invoiceNumber}")
+            putExtra(android.content.Intent.EXTRA_TEXT, invoiceText)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(android.content.Intent.createChooser(shareIntent, "Download / Share Invoice (${record.invoiceNumber})"))
+            _uiToastMessage.value = "Invoice ${record.invoiceNumber} ready to download / print!"
+        } catch (e: Exception) {
+            _uiToastMessage.value = "Unable to open sharing application"
+        }
     }
 
     fun getSubscriptionDaysRemaining(): Int {

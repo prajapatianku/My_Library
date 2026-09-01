@@ -144,13 +144,13 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         val targetPeriod = pendingUpgradePeriod
         if (targetPlan != null && targetPeriod != null) {
             if (isBranchPurchasePayment) {
-                viewModel.purchaseAdditionalBranch()
+                viewModel.purchaseAdditionalBranch(razorpayPaymentId)
                 Toast.makeText(this, "Branch successfully added to your subscription!", Toast.LENGTH_LONG).show()
             } else if (isRenewalPayment) {
-                viewModel.renewSaaS()
+                viewModel.renewSaaS(razorpayPaymentId)
                 Toast.makeText(this, "Subscription renewed successfully!", Toast.LENGTH_LONG).show()
             } else {
-                viewModel.upgradeSaaS(targetPlan, targetPeriod, pendingBranchCount)
+                viewModel.upgradeSaaS(targetPlan, targetPeriod, pendingBranchCount, razorpayPaymentId)
                 Toast.makeText(this, "Payment successful! Upgraded to ${targetPlan.displayName}", Toast.LENGTH_LONG).show()
             }
         }

@@ -47,7 +47,6 @@ fun SettingsScreen(
     val saasPurchases by viewModel.saasPurchaseHistory.collectAsState()
     val auditLogs by viewModel.auditLogs.collectAsState()
     val showBranchDialog by viewModel.showBranchManagerDialog.collectAsState()
-    val showQrDialog by viewModel.showQrDialog.collectAsState()
     val isHindi by viewModel.isHindi.collectAsState()
 
     var showPaymentHistoryDialog by remember { mutableStateOf(false) }
@@ -263,13 +262,6 @@ fun SettingsScreen(
                     icon = Icons.Default.AccountTree,
                     isLocked = !viewModel.hasFeature("multi_branch"),
                     onClick = { viewModel.showBranchManagerDialog(true) }
-                )
-
-                SettingsItemCard(
-                    title = translate("Student Registration QR Code", isHindi),
-                    subtitle = "Allow walk-in students to register by scanning QR",
-                    icon = Icons.Default.QrCode2,
-                    onClick = { viewModel.showQrDialog(true) }
                 )
 
                 SettingsItemCard(

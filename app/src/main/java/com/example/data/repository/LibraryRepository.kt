@@ -605,6 +605,25 @@ class LibraryRepository(
         persistCurrentAccount()
     }
 
+    fun releaseStudentSeat(studentId: String): String {
+        val student = _students.value.find { it.id == studentId } ?: return ""
+        val seatNum = student.assignedSeatNumber
+        if (seatNum.isNotBlank()) {
+            releaseSeatInternal(seatNum)
+        }
+        _students.value = _students.value.map {
+            if (it.id == studentId) {
+                it.copy(
+                    assignedSeatNumber = "",
+                    status = if (it.dueAmount > 0) StudentStatus.EXPIRED else it.status
+                )
+            } else it
+        }
+        addAuditLog("Seat Released", "Student", "Seat $seatNum released from ${student.fullName} (grace period / overdue)")
+        persistCurrentAccount()
+        return seatNum
+    }
+
     private fun releaseSeatInternal(seatNumber: String) {
         _seats.value = _seats.value.map { seat ->
             if (seat.seatNumber == seatNumber) {

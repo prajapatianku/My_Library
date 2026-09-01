@@ -56,7 +56,7 @@ fun StudentsScreen(
     val isHindi by viewModel.isHindi.collectAsState()
 
     val shiftOptions = listOf("All", "Morning", "Afternoon", "Evening", "Full Day")
-    val statusOptions = listOf("All", "Active", "Has Due", "Expired")
+    val statusOptions = listOf("All", "Expiring in 3 Days", "Active", "Has Due", "Expired")
 
     Scaffold(
         floatingActionButton = {
@@ -248,6 +248,7 @@ fun StudentsScreen(
                             onClick = { viewModel.selectStudentForDetail(student) },
                             onCollectFee = { viewModel.showCollectFeeDialog(student) },
                             onWhatsAppReminder = { viewModel.sendStudentWhatsAppReminder(context, student) },
+                            onReleaseSeat = { viewModel.releaseStudentSeat(student.id) },
                             onCall = {
                                 val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${student.mobile}"))
                                 context.startActivity(intent)
@@ -266,8 +267,31 @@ fun StudentCard(
     onClick: () -> Unit,
     onCollectFee: () -> Unit,
     onWhatsAppReminder: () -> Unit,
+    onReleaseSeat: () -> Unit,
     onCall: () -> Unit
 ) {
+    val daysUntilDue = remember(student.feeDueDate) {
+        if (student.feeDueDate.isBlank()) 999
+        else {
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val dueDate = sdf.parse(student.feeDueDate) ?: return@remember 999
+                val todayCal = java.util.Calendar.getInstance()
+                todayCal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                todayCal.set(java.util.Calendar.MINUTE, 0)
+                todayCal.set(java.util.Calendar.SECOND, 0)
+                todayCal.set(java.util.Calendar.MILLISECOND, 0)
+                ((dueDate.time - todayCal.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+            } catch (e: Exception) {
+                999
+            }
+        }
+    }
+    val isExpiringSoon = daysUntilDue in 0..3 && student.dueAmount > 0
+    val isInGracePeriod = daysUntilDue in -2..-1 && student.dueAmount > 0
+    val isOverdueExpired = daysUntilDue < -2 && student.dueAmount > 0
+    val canReleaseSeat = student.assignedSeatNumber.isNotBlank() && (isExpiringSoon || isInGracePeriod || isOverdueExpired || student.status == com.example.data.model.StudentStatus.EXPIRED)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -315,6 +339,55 @@ fun StudentCard(
                 }
 
                 StatusBadge(status = if (student.dueAmount > 0) "Has Due" else "Active")
+            }
+
+            // Expiring Soon / Grace Period Banner
+            if (isExpiringSoon || isInGracePeriod || isOverdueExpired) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    color = if (isInGracePeriod || isOverdueExpired) Color(0xFFFEE2E2) else Color(0xFFFEF3C7),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (isInGracePeriod || isOverdueExpired) Icons.Default.Warning else Icons.Default.AccessTime,
+                                contentDescription = null,
+                                tint = if (isInGracePeriod || isOverdueExpired) DangerRed else WarningAmber,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = when {
+                                    daysUntilDue == 0 -> "🚨 Due Today (${student.feeDueDate})"
+                                    daysUntilDue > 0 -> "⚠️ Due in $daysUntilDue days (${student.feeDueDate})"
+                                    daysUntilDue in -2..-1 -> "⏳ Grace Period (${-daysUntilDue}d overdue)"
+                                    else -> "❌ Expired (${-daysUntilDue}d overdue)"
+                                },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isInGracePeriod || isOverdueExpired) DangerRed else Color(0xFF92400E)
+                            )
+                        }
+                        if (canReleaseSeat) {
+                            Text(
+                                text = "Release Seat ✕",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = DangerRed,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { onReleaseSeat() }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -420,7 +493,9 @@ fun AddStudentDialog(
     var selectedSeat by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("Male") }
     var studentAddress by remember { mutableStateOf("") }
-    
+    var sendWelcomeWhatsApp by remember { mutableStateOf(true) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isHindi by viewModel.isHindi.collectAsState()
     val vacantSeats = remember(seats) {
         seats.filter { it.status == com.example.data.model.SeatStatus.AVAILABLE }
     }
@@ -627,12 +702,44 @@ fun AddStudentDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // WhatsApp Welcome Pass Checkbox
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { sendWelcomeWhatsApp = !sendWelcomeWhatsApp }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(
+                        checked = sendWelcomeWhatsApp,
+                        onCheckedChange = { sendWelcomeWhatsApp = it },
+                        colors = CheckboxDefaults.colors(checkedColor = Color(0xFF128C7E))
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Chat,
+                        contentDescription = null,
+                        tint = Color(0xFF128C7E),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = translate("Send Welcome Pass via WhatsApp", isHindi),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = WarmTextDark
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = {
                         if (fullName.isNotBlank() && mobile.isNotBlank()) {
-                            viewModel.createStudent(
+                            val newStudent = viewModel.createStudentAndReturn(
                                 fullName = fullName,
                                 mobile = mobile,
                                 whatsapp = mobile,
@@ -645,6 +752,9 @@ fun AddStudentDialog(
                                 gender = gender,
                                 address = studentAddress
                             )
+                            if (newStudent != null && sendWelcomeWhatsApp) {
+                                viewModel.sendStudentWelcomeWhatsApp(context, newStudent)
+                            }
                         }
                     },
                     modifier = Modifier
@@ -654,7 +764,7 @@ fun AddStudentDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
                     enabled = fullName.isNotBlank() && mobile.length == 10
                 ) {
-                    Text("Enroll Student")
+                    Text(translate("Enroll Student", isHindi))
                 }
             }
         }
@@ -671,6 +781,7 @@ fun StudentDetailDialog(
     val payments by viewModel.payments.collectAsState()
     val studentPayments = payments.filter { it.studentId == student.id || it.studentName == student.fullName }
     val isWhatsAppUnlocked = viewModel.hasFeature("whatsapp_fee_reminders")
+    val isHindi by viewModel.isHindi.collectAsState()
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -863,6 +974,24 @@ fun StudentDetailDialog(
                         Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Remove")
+                    }
+                }
+
+                if (student.assignedSeatNumber.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.releaseStudentSeat(student.id)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, DangerRed),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed)
+                    ) {
+                        Icon(imageVector = Icons.Default.Chair, contentDescription = null, modifier = Modifier.size(16.dp), tint = DangerRed)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "${translate("Release Seat", isHindi)} (${student.assignedSeatNumber})", fontWeight = FontWeight.Bold)
                     }
                 }
 

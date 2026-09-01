@@ -215,6 +215,33 @@ class LibraryViewModel(
         DashboardMetrics(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     )
 
+    fun getStudentDaysUntilDue(student: Student): Int {
+        if (student.feeDueDate.isBlank()) return 999
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val dueDate = sdf.parse(student.feeDueDate) ?: return 999
+            val todayCal = Calendar.getInstance()
+            todayCal.set(Calendar.HOUR_OF_DAY, 0)
+            todayCal.set(Calendar.MINUTE, 0)
+            todayCal.set(Calendar.SECOND, 0)
+            todayCal.set(Calendar.MILLISECOND, 0)
+            val diffMs = dueDate.time - todayCal.timeInMillis
+            (diffMs / (1000 * 60 * 60 * 24)).toInt()
+        } catch (e: Exception) {
+            999
+        }
+    }
+
+    fun isStudentInGracePeriod(student: Student): Boolean {
+        val days = getStudentDaysUntilDue(student)
+        return days in -2..-1 && student.dueAmount > 0
+    }
+
+    fun isStudentExpiringSoon(student: Student): Boolean {
+        val days = getStudentDaysUntilDue(student)
+        return days in 0..3 && student.dueAmount > 0
+    }
+
     // Filtered Students List
     val filteredStudents: StateFlow<List<Student>> = combine(
         students, studentSearchQuery, studentShiftFilter, studentStatusFilter
@@ -230,7 +257,11 @@ class LibraryViewModel(
             val matchesStatus = when (status) {
                 "Active" -> student.status == StudentStatus.ACTIVE
                 "Has Due" -> student.dueAmount > 0
-                "Expired" -> student.status == StudentStatus.EXPIRED
+                "Expired" -> student.status == StudentStatus.EXPIRED || getStudentDaysUntilDue(student) < -2
+                "Expiring in 3 Days" -> {
+                    val days = getStudentDaysUntilDue(student)
+                    days in -2..3 && (student.dueAmount > 0 || student.status == StudentStatus.EXPIRED)
+                }
                 else -> true
             }
             matchesQuery && matchesShift && matchesStatus
@@ -478,7 +509,7 @@ class LibraryViewModel(
         _uiToastMessage.value = "Library profile updated successfully!"
     }
 
-    fun createStudent(
+    fun createStudentAndReturn(
         fullName: String,
         mobile: String,
         whatsapp: String,
@@ -490,7 +521,7 @@ class LibraryViewModel(
         initialDue: Int,
         gender: String = "Male",
         address: String = ""
-    ): Boolean {
+    ): Student? {
         val count = students.value.size + 1
         val code = "STU-" + String.format(Locale.US, "%03d", count)
         val student = Student(
@@ -509,19 +540,49 @@ class LibraryViewModel(
             address = address
         )
         val success = repository.addStudent(student)
-        if (success) {
+        return if (success) {
             _showAddStudentDialog.value = false
             _uiToastMessage.value = "Student $fullName ($code) added successfully!"
+            student
         } else {
             _uiToastMessage.value = "Seat $assignedSeat is already occupied in $assignedShift. Please choose another seat."
+            null
         }
-        return success
+    }
+
+    fun createStudent(
+        fullName: String,
+        mobile: String,
+        whatsapp: String,
+        email: String,
+        course: String,
+        assignedSeat: String,
+        assignedShift: String,
+        monthlyFee: Int,
+        initialDue: Int,
+        gender: String = "Male",
+        address: String = ""
+    ): Boolean {
+        return createStudentAndReturn(
+            fullName, mobile, whatsapp, email, course, assignedSeat, assignedShift, monthlyFee, initialDue, gender, address
+        ) != null
     }
 
     fun deleteStudent(studentId: String) {
         repository.deleteStudent(studentId)
         _selectedStudentForDetail.value = null
         _uiToastMessage.value = "Student removed"
+    }
+
+    fun releaseStudentSeat(studentId: String) {
+        val student = students.value.find { it.id == studentId }
+        val seatNum = student?.assignedSeatNumber ?: ""
+        val releasedSeat = repository.releaseStudentSeat(studentId)
+        _uiToastMessage.value = if (releasedSeat.isNotBlank()) {
+            "Seat $releasedSeat released and is now available for walk-ins!"
+        } else {
+            "Seat unassigned successfully!"
+        }
     }
 
     fun assignSeatToStudent(seatNumber: String, studentId: String, studentName: String, shiftName: String) {
@@ -571,13 +632,18 @@ class LibraryViewModel(
         amount: Int,
         discount: Int,
         paymentMethod: PaymentMethod,
-        notes: String
+        notes: String,
+        context: android.content.Context? = null,
+        sendWhatsAppReceipt: Boolean = false
     ) {
         val payment = repository.collectFee(studentId, amount, discount, paymentMethod, notes)
         _showCollectFeeDialog.value = null
         if (payment != null) {
             _activeReceipt.value = payment
             _uiToastMessage.value = "₹$amount collected successfully! Receipt generated."
+            if (sendWhatsAppReceipt && context != null) {
+                sendStudentReceiptWhatsApp(context, payment)
+            }
         }
     }
 
@@ -820,6 +886,102 @@ class LibraryViewModel(
 
         launchWhatsApp(context, targetPhone, msg)
         _uiToastMessage.value = "Opening WhatsApp fee reminder for ${student.fullName} (₹${student.dueAmount} due)"
+    }
+
+    fun generateStudentWelcomeWhatsAppText(student: Student, lib: Library): String {
+        val sb = StringBuilder()
+        sb.append("🎉 *WELCOME TO ${lib.name.uppercase()}*\n")
+        sb.append("_Powered by Vidyara Library Management_\n\n")
+        sb.append("Dear *${student.fullName}*,\n")
+        sb.append("Your admission and workspace seat have been successfully confirmed! Here is your digital student pass:\n\n")
+        sb.append("🪪 *STUDENT PASS DETAILS*\n")
+        sb.append("• Student ID: *${student.studentCode}*\n")
+        sb.append("• Course / Goal: ${student.course}\n")
+        sb.append("• Shift: *${student.assignedShiftName}*\n")
+        sb.append("• Assigned Seat: *${if (student.assignedSeatNumber.isNotBlank()) "Seat " + student.assignedSeatNumber else "Floating Seat"}*\n")
+        sb.append("• Monthly Fee: ₹${student.monthlyFee}\n")
+        if (student.dueAmount > 0) {
+            sb.append("• Pending Due: ₹${student.dueAmount} (Due by: ${student.feeDueDate})\n")
+        } else {
+            sb.append("• Fee Status: ✅ Fully Paid\n")
+        }
+        sb.append("\n📍 *Library Location:*\n")
+        sb.append("${lib.address}, ${lib.city}\n")
+        sb.append("🕒 *Operating Hours:* ${lib.openingTime} - ${lib.closingTime}\n")
+        sb.append("📞 *Helpdesk:* ${lib.phone}\n")
+        if (lib.upiId.isNotBlank()) {
+            sb.append("💳 *UPI ID for Fees:* ${lib.upiId}\n")
+        }
+        sb.append("\nWe wish you great success in your study journey! 🚀")
+        return sb.toString()
+    }
+
+    fun sendStudentWelcomeWhatsApp(context: android.content.Context, student: Student) {
+        val lib = library.value
+        val msg = generateStudentWelcomeWhatsAppText(student, lib)
+        val targetPhone = student.whatsapp.ifBlank { student.mobile }
+
+        repository.logWhatsAppReminder(
+            studentName = student.fullName,
+            targetPhone = targetPhone,
+            dueAmount = student.dueAmount,
+            dueDate = student.feeDueDate,
+            messageType = "WELCOME_PASS"
+        )
+
+        launchWhatsApp(context, targetPhone, msg)
+        _uiToastMessage.value = "Opening WhatsApp to send welcome pass to ${student.fullName}!"
+    }
+
+    fun generateFeeReceiptWhatsAppText(payment: StudentPayment, lib: Library): String {
+        val student = students.value.find { it.id == payment.studentId || it.fullName == payment.studentName }
+        val sb = StringBuilder()
+        sb.append("🏛️ *${lib.name.uppercase()}*\n")
+        sb.append("📄 *FEE PAYMENT RECEIPT & INVOICE*\n")
+        sb.append("--------------------------------------\n")
+        sb.append("Receipt No: *${payment.receiptNumber}*\n")
+        sb.append("Date: ${payment.paymentDate}\n\n")
+        sb.append("👤 Student: *${payment.studentName}*\n")
+        sb.append("🆔 Student ID: ${payment.studentCode}\n")
+        sb.append("🪑 Assigned Seat: ${if (payment.seatNumber.isNotBlank()) "Seat " + payment.seatNumber else "Floating Area"}\n")
+        sb.append("🕒 Shift: ${payment.shiftName}\n")
+        sb.append("--------------------------------------\n")
+        sb.append("💰 *Paid Amount: ₹${payment.amount}*\n")
+        sb.append("💳 Payment Mode: ${payment.paymentMethod.name}\n")
+        sb.append("🔗 Transaction ID: ${payment.transactionId}\n")
+        if (payment.notes.isNotBlank()) {
+            sb.append("📝 Description: ${payment.notes}\n")
+        }
+        if (student != null) {
+            if (student.dueAmount > 0) {
+                sb.append("⚠️ *Remaining Balance Due: ₹${student.dueAmount}*\n")
+            } else {
+                sb.append("✅ *Fee Status: Fully Cleared*\n")
+            }
+        }
+        sb.append("--------------------------------------\n")
+        sb.append("Thank you for your payment!\n")
+        sb.append("📞 ${lib.phone} | 💳 UPI: ${lib.upiId}\n")
+        sb.append("💡 _Digitally Verified & Generated by Vidyara_")
+        return sb.toString()
+    }
+
+    fun sendStudentReceiptWhatsApp(context: android.content.Context, payment: StudentPayment) {
+        val lib = library.value
+        val student = students.value.find { it.id == payment.studentId || it.fullName == payment.studentName }
+        val msg = generateFeeReceiptWhatsAppText(payment, lib)
+        val targetPhone = student?.whatsapp?.ifBlank { student.mobile } ?: student?.mobile ?: ""
+
+        repository.logWhatsAppReminder(
+            studentName = payment.studentName,
+            targetPhone = targetPhone,
+            dueAmount = 0,
+            dueDate = payment.paymentDate,
+            messageType = "FEE_RECEIPT"
+        )
+
+        launchWhatsApp(context, targetPhone, msg)
+        _uiToastMessage.value = "Opening WhatsApp to send receipt for ₹${payment.amount} to ${payment.studentName}!"
     }
 
     fun lookupPincode(pincode: String, onResult: (city: String, state: String) -> Unit) {

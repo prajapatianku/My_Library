@@ -345,6 +345,8 @@ fun CollectFeeDialog(
     var discount by remember { mutableStateOf("0") }
     var selectedMethod by remember { mutableStateOf(PaymentMethod.UPI) }
     var notes by remember { mutableStateOf("Monthly Fee Access") }
+    var sendWhatsAppReceipt by remember { mutableStateOf(true) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -426,7 +428,39 @@ fun CollectFeeDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // WhatsApp Receipt Checkbox
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { sendWhatsAppReceipt = !sendWhatsAppReceipt }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(
+                        checked = sendWhatsAppReceipt,
+                        onCheckedChange = { sendWhatsAppReceipt = it },
+                        colors = CheckboxDefaults.colors(checkedColor = Color(0xFF128C7E))
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Chat,
+                        contentDescription = null,
+                        tint = Color(0xFF128C7E),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Send Receipt via WhatsApp to student",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = WarmTextDark
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = {
@@ -437,7 +471,9 @@ fun CollectFeeDialog(
                                 amount = collectedAmount,
                                 discount = discount.toIntOrNull() ?: 0,
                                 paymentMethod = selectedMethod,
-                                notes = notes
+                                notes = notes,
+                                context = context,
+                                sendWhatsAppReceipt = sendWhatsAppReceipt
                             )
                             onDismiss()
                         }

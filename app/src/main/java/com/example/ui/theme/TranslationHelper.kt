@@ -81,6 +81,12 @@ fun translate(text: String, isHindi: Boolean): String {
         "Afternoon" -> "दोपहर"
         "Evening" -> "शाम"
         "Full Day" -> "पूरा दिन"
+        "Expiring in 3 Days" -> "3 दिन में समाप्त / ग्रेस"
+        "Release Seat" -> "सीट खाली करें"
+        "Grace Period" -> "ग्रेस पीरियड"
+        "Send Welcome Pass via WhatsApp" -> "व्हाट्सएप पर वेलकम पास भेजें"
+        "Send Receipt via WhatsApp" -> "व्हाट्सएप पर रसीद भेजें"
+        "Expiring Soon" -> "जल्द समाप्त"
         else -> text
     }
 }

@@ -137,6 +137,10 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = NavyPrimary)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    val daysRemaining = viewModel.getSubscriptionDaysRemaining()
+                    val isPaidPlan = saasPlan.planType != SaaSPlanType.FREE
+                    val canRenew = daysRemaining in 0..7
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -165,7 +169,6 @@ fun SettingsScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            val daysRemaining = viewModel.getSubscriptionDaysRemaining()
                             val validityText = if (saasPlan.planType == SaaSPlanType.FREE) {
                                 "Free Tier • Up to 20 Students"
                             } else if (daysRemaining >= 0) {
@@ -188,20 +191,33 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Button(
-                            onClick = { viewModel.requestUpgrade("settings") },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                        ) {
-                            Icon(imageVector = Icons.Default.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Upgrade Plan", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                        if (!isPaidPlan) {
+                            Button(
+                                onClick = { viewModel.requestUpgrade("settings") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                            ) {
+                                Icon(imageVector = Icons.Default.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Upgrade Plan", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                            }
+                        } else if (canRenew) {
+                            Button(
+                                onClick = { viewModel.requestUpgrade("settings") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                            ) {
+                                Icon(imageVector = Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Renew Plan", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                            }
                         }
 
                         OutlinedButton(
                             onClick = { showPaymentHistoryDialog = true },
-                            modifier = Modifier.weight(1.15f),
+                            modifier = if (isPaidPlan && !canRenew) Modifier.fillMaxWidth() else Modifier.weight(1.15f),
                             shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.6f)),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = PureWhite)
@@ -269,13 +285,6 @@ fun SettingsScreen(
                     subtitle = "Track financial & seat changes (${auditLogs.size} logs)",
                     icon = Icons.Default.History,
                     onClick = { showAuditLogsDialog = true }
-                )
-
-                SettingsItemCard(
-                    title = "Subscription Invoices & Payment History",
-                    subtitle = "View Razorpay transaction IDs & download official tax invoices",
-                    icon = Icons.Default.ReceiptLong,
-                    onClick = { showPaymentHistoryDialog = true }
                 )
 
                 SettingsItemCard(

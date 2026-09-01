@@ -285,15 +285,24 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    val isFreePlan = saasPlan.planType == com.example.data.model.SaaSPlanType.FREE
                     KpiMetricCard(
                         title = translate("Active Students", isHindi),
-                        value = "${metrics.activeStudentsCount}",
-                        subtitle = "Total enrolled",
+                        value = if (isFreePlan) "${metrics.activeStudentsCount}/20" else "${metrics.activeStudentsCount}",
+                        subtitle = if (isFreePlan) {
+                            if (metrics.activeStudentsCount >= 20) "⚠️ Limit Reached (Free)" else "${20 - metrics.activeStudentsCount} slots remaining"
+                        } else "Total enrolled",
                         icon = Icons.Default.People,
-                        iconBgColor = OrangePrimaryContainer,
-                        iconTintColor = OrangePrimary,
+                        iconBgColor = if (isFreePlan && metrics.activeStudentsCount >= 20) Color(0xFFFEE2E2) else OrangePrimaryContainer,
+                        iconTintColor = if (isFreePlan && metrics.activeStudentsCount >= 20) DangerRed else OrangePrimary,
                         modifier = Modifier.weight(1f),
-                        onClick = onNavigateToStudents
+                        onClick = {
+                            if (isFreePlan && metrics.activeStudentsCount >= 20) {
+                                viewModel.requestUpgrade("student_limit_20")
+                            } else {
+                                onNavigateToStudents()
+                            }
+                        }
                     )
 
                     KpiMetricCard(

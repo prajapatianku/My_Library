@@ -74,28 +74,10 @@ fun PaymentsExpensesScreen(
             ExtendedFloatingActionButton(
                 onClick = {
                     if (selectedTab == 0) {
-                        // Export Report as Excel/PDF
-                        val sb = java.lang.StringBuilder()
-                        sb.append("🏛️ MY LIBRARY FINANCE REPORT\n")
-                        sb.append("----------------------------\n")
-                        sb.append("Time Period: $timeFilter\n")
-                        sb.append("Date Generated: ${java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date())}\n")
-                        sb.append("Total Income: ₹$totalIncome\n")
-                        sb.append("Total Expense: ₹$totalExpense\n")
-                        sb.append("Net cash flow: ₹$netProfit\n\n")
-                        sb.append("📄 TRANSACTIONS ($timeFilter):\n")
-                        filteredPayments.take(20).forEach { p ->
-                            sb.append("• ${p.paymentDate} - ${p.studentName}: ₹${p.amount} (${p.paymentMethod})\n")
-                        }
-                        
-                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(android.content.Intent.EXTRA_TEXT, sb.toString())
-                        }
-                        try {
-                            context.startActivity(android.content.Intent.createChooser(shareIntent, "Export Financial Report"))
-                        } catch (e: java.lang.Exception) {
-                            viewModel.showToast("Report compiled successfully!")
+                        if (!viewModel.hasFeature("revenue_download")) {
+                            viewModel.requestUpgrade("revenue_download")
+                        } else {
+                            viewModel.exportFinancialReport(context)
                         }
                     } else {
                         viewModel.showAddExpenseDialog(true)

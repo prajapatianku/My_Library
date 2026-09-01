@@ -61,7 +61,13 @@ fun StudentsScreen(
     Scaffold(
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { viewModel.showAddStudentDialog(true) },
+                onClick = {
+                    if (!viewModel.canAddStudent()) {
+                        viewModel.requestUpgrade("student_limit_20")
+                    } else {
+                        viewModel.showAddStudentDialog(true)
+                    }
+                },
                 icon = { Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null) },
                 text = { Text(translate("Add Student", isHindi), fontWeight = FontWeight.Bold) },
                 containerColor = OrangePrimary,

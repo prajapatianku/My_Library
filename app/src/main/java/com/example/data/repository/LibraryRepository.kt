@@ -419,13 +419,25 @@ class LibraryRepository(
     // ENTITLEMENTS & PLANS
     // ==========================================
 
+    fun getMaxStudentsAllowed(): Int {
+        val currentPlan = _saasSubscription.value.planType
+        return when (currentPlan) {
+            SaaSPlanType.FREE -> 20
+            else -> 999999
+        }
+    }
+
+    fun canAddStudent(): Boolean {
+        return _students.value.size < getMaxStudentsAllowed()
+    }
+
     fun hasFeature(featureKey: String): Boolean {
         val currentPlan = _saasSubscription.value.planType
         return when (featureKey) {
             "multi_branch", "branch_dashboard", "consolidated_reports", "branch_comparison" -> {
                 currentPlan == SaaSPlanType.BUSINESS
             }
-            "whatsapp_fee_reminders", "whatsapp_reminders", "revenue_download", "pdf_export", "csv_export", "advanced_analytics", "email_support" -> {
+            "whatsapp_fee_reminders", "whatsapp_reminders", "revenue_download", "pdf_export", "csv_export", "advanced_analytics", "email_support", "student_limit_20", "unlimited_students" -> {
                 currentPlan == SaaSPlanType.PREMIUM || currentPlan == SaaSPlanType.BUSINESS
             }
             else -> true
@@ -435,7 +447,7 @@ class LibraryRepository(
     fun requiredPlan(featureKey: String): SaaSPlanType {
         return when (featureKey) {
             "multi_branch", "branch_dashboard", "consolidated_reports", "branch_comparison" -> SaaSPlanType.BUSINESS
-            "whatsapp_fee_reminders", "whatsapp_reminders", "revenue_download", "pdf_export", "csv_export", "advanced_analytics", "email_support" -> SaaSPlanType.PREMIUM
+            "whatsapp_fee_reminders", "whatsapp_reminders", "revenue_download", "pdf_export", "csv_export", "advanced_analytics", "email_support", "student_limit_20", "unlimited_students" -> SaaSPlanType.PREMIUM
             else -> SaaSPlanType.FREE
         }
     }
@@ -524,6 +536,9 @@ class LibraryRepository(
     // ==========================================
 
     fun addStudent(student: Student): Boolean {
+        if (!canAddStudent()) {
+            return false
+        }
         if (student.assignedSeatNumber.isNotBlank()) {
             val conflictingSeat = _seats.value.find {
                 it.seatNumber == student.assignedSeatNumber &&

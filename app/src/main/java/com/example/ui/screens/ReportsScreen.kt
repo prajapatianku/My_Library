@@ -33,6 +33,7 @@ fun ReportsScreen(
     val students by viewModel.students.collectAsState()
     val seats by viewModel.seats.collectAsState()
     val saasPlan by viewModel.saasSubscription.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val canExport = viewModel.hasFeature("revenue_download")
 
@@ -78,7 +79,7 @@ fun ReportsScreen(
                             if (!canExport) {
                                 viewModel.requestUpgrade("revenue_download")
                             } else {
-                                // Real Premium download action
+                                viewModel.exportFinancialReport(context)
                             }
                         },
                         shape = RoundedCornerShape(10.dp),

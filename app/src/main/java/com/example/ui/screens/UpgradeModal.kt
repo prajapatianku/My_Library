@@ -333,17 +333,18 @@ fun UpgradeModal(
                         PlanSelectionCard(
                             title = "VIDYARA FREE",
                             price = "₹0",
-                            subtitle = "Forever basic library operations",
+                            subtitle = "Basic library operations for up to 20 students",
                             isSelected = selectedPlan == SaaSPlanType.FREE,
                             isCurrent = currentPlan.planType == SaaSPlanType.FREE,
                             features = listOf(
-                                "Full student & seat management",
-                                "Daily shift & attendance tracking",
-                                "Payment collection & receipts",
-                                "Expense logging",
-                                "Basic financial report view",
-                                "Single branch access",
-                                "✕ WhatsApp Fee Due Alerts (Requires Pro/Business)"
+                                "Up to 20 Enrolled Students (Free Limit)",
+                                "Up to 25 Physical Seats (Free Limit)",
+                                "Daily Shift & Attendance Tracking",
+                                "Payment Collection & Receipts",
+                                "Basic Expense Logging",
+                                "Single Branch Access",
+                                "✕ WhatsApp Fee Due Alerts (Requires Pro)",
+                                "✕ PDF / Excel Accounting Exports (Requires Pro)"
                             ),
                             onSelect = { selectedPlan = SaaSPlanType.FREE }
                         )
@@ -356,17 +357,17 @@ fun UpgradeModal(
                             title = "VIDYARA PRO",
                             badge = "POPULAR",
                             price = premiumPrice,
-                            subtitle = "For single-library owners needing WhatsApp alerts & reports",
+                            subtitle = "For single-library owners needing unlimited students & WhatsApp automation",
                             isSelected = selectedPlan == SaaSPlanType.PREMIUM,
                             isCurrent = currentPlan.planType == SaaSPlanType.PREMIUM,
                             features = listOf(
-                                "Everything in Vidyara Free",
-                                "📲 WhatsApp Student Fee Due Alerts to Owner",
+                                "Unlimited Students & Seats (No Limits)",
+                                "Single Branch Access",
+                                "📲 Automated WhatsApp Due Alerts to Owner",
                                 "💬 1-Tap Student WhatsApp Fee Due Reminders",
-                                "Download & export Revenue reports",
-                                "PDF & CSV Financial Exports",
+                                "📊 1-Click PDF & CSV Financial Statements",
                                 "Advanced Student Analytics & Trends",
-                                "Priority WhatsApp/Email Support"
+                                "Priority WhatsApp & Email Support"
                             ),
                             onSelect = { selectedPlan = SaaSPlanType.PREMIUM }
                         )
@@ -392,12 +393,12 @@ fun UpgradeModal(
                             isCurrent = currentPlan.planType == SaaSPlanType.BUSINESS,
                             features = listOf(
                                 "Everything in Vidyara Pro",
+                                "Multi-Branch Support (1+1 Included, Expandable)",
+                                "Instant Branch Switching & Isolation",
                                 "📲 Multi-Branch WhatsApp Due Alerts to Owner",
                                 "💬 Bulk WhatsApp Student Fee Reminders",
-                                "Manage Multiple Library Branches",
-                                "Instant Branch Switching",
-                                "Consolidated Multi-Branch Dashboard",
-                                "Centralized Owner Control & Audit"
+                                "Consolidated Multi-Branch P&L & Attendance",
+                                "Centralized Owner Control & Security Audit"
                             ),
                             onSelect = { selectedPlan = SaaSPlanType.BUSINESS }
                         )

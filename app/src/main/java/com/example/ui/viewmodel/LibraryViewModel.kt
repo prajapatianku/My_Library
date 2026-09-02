@@ -582,6 +582,28 @@ class LibraryViewModel(
         _uiToastMessage.value = "Library profile updated successfully!"
     }
 
+    fun calculateNextDueDate(admissionDateStr: String, cycleDays: Int = 28): String {
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val admissionDate = sdf.parse(admissionDateStr) ?: return ""
+            val today = sdf.parse(sdf.format(Date())) ?: Date()
+
+            val cal = Calendar.getInstance()
+            cal.time = admissionDate
+
+            if (cal.time.after(today) || cal.time == today) {
+                cal.add(Calendar.DAY_OF_YEAR, cycleDays)
+            } else {
+                while (!cal.time.after(today)) {
+                    cal.add(Calendar.DAY_OF_YEAR, cycleDays)
+                }
+            }
+            sdf.format(cal.time)
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
     fun createStudentAndReturn(
         fullName: String,
         mobile: String,
@@ -593,7 +615,9 @@ class LibraryViewModel(
         monthlyFee: Int,
         initialDue: Int,
         gender: String = "Male",
-        address: String = ""
+        address: String = "",
+        joiningDate: String = "",
+        feeDueDate: String = ""
     ): Student? {
         if (!canAddStudent()) {
             requestUpgrade("student_limit_20")
@@ -602,6 +626,10 @@ class LibraryViewModel(
         }
         val count = students.value.size + 1
         val code = "STU-" + String.format(Locale.US, "%03d", count)
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val actualJoiningDate = joiningDate.ifBlank { todayStr }
+        val actualDueDate = feeDueDate.ifBlank { calculateNextDueDate(actualJoiningDate) }
+
         val student = Student(
             studentCode = code,
             fullName = fullName,
@@ -615,7 +643,9 @@ class LibraryViewModel(
             dueAmount = initialDue,
             branchId = repository.activeBranchId.value,
             gender = gender,
-            address = address
+            address = address,
+            joiningDate = actualJoiningDate,
+            feeDueDate = actualDueDate
         )
         val success = repository.addStudent(student)
         return if (success) {
@@ -639,10 +669,12 @@ class LibraryViewModel(
         monthlyFee: Int,
         initialDue: Int,
         gender: String = "Male",
-        address: String = ""
+        address: String = "",
+        joiningDate: String = "",
+        feeDueDate: String = ""
     ): Boolean {
         return createStudentAndReturn(
-            fullName, mobile, whatsapp, email, course, assignedSeat, assignedShift, monthlyFee, initialDue, gender, address
+            fullName, mobile, whatsapp, email, course, assignedSeat, assignedShift, monthlyFee, initialDue, gender, address, joiningDate, feeDueDate
         ) != null
     }
 

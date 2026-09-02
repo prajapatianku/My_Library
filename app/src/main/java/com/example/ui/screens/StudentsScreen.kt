@@ -432,7 +432,27 @@ fun StudentCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "📅 Joined: ${student.joiningDate}",
+                    fontSize = 11.sp,
+                    color = WarmTextMuted,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Next Due: ${student.feeDueDate}",
+                    fontSize = 11.sp,
+                    color = if (student.dueAmount > 0) DangerRed else Color(0xFF16A34A),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Action Buttons
             Row(
@@ -504,6 +524,7 @@ fun AddStudentDialog(
     val isHindi by viewModel.isHindi.collectAsState()
     val vacantSeats = remember(seats) {
         seats.filter { it.status == com.example.data.model.SeatStatus.AVAILABLE }
+            .sortedBy { it.seatNumber.toIntOrNull() ?: Int.MAX_VALUE }
     }
     var showSeatSelectionDialog by remember { mutableStateOf(false) }
     
@@ -512,6 +533,14 @@ fun AddStudentDialog(
         shifts.find { it.name == selectedShift }?.defaultPrice ?: 1000
     }
     var monthlyFee by remember(defaultShiftPrice) { mutableStateOf(defaultShiftPrice.toString()) }
+
+    val todayDateStr = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()) }
+    var admissionDate by remember { mutableStateOf(todayDateStr) }
+    var isExistingStudent by remember { mutableStateOf(false) }
+    var feeDueDate by remember(admissionDate) {
+        mutableStateOf(viewModel.calculateNextDueDate(admissionDate))
+    }
+    var isFeePaidUpfront by remember { mutableStateOf(false) }
 
     if (showSeatSelectionDialog) {
         SeatSelectionDialog(
@@ -662,6 +691,194 @@ fun AddStudentDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Section: Admission & Billing Schedule
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF8FAFC),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Admission & Billing Schedule",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavyPrimary
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { isExistingStudent = !isExistingStudent }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Checkbox(
+                                    checked = isExistingStudent,
+                                    onCheckedChange = { isExistingStudent = it },
+                                    modifier = Modifier.size(18.dp),
+                                    colors = CheckboxDefaults.colors(checkedColor = OrangePrimary)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Existing Student",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = WarmTextDark
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Admission Date Input
+                        OutlinedTextField(
+                            value = admissionDate,
+                            onValueChange = { input ->
+                                admissionDate = input
+                                if (input.length == 10) {
+                                    val calc = viewModel.calculateNextDueDate(input)
+                                    if (calc.isNotBlank()) {
+                                        feeDueDate = calc
+                                    }
+                                }
+                            },
+                            label = { Text("Admission Date (YYYY-MM-DD) *") },
+                            placeholder = { Text("YYYY-MM-DD") },
+                            leadingIcon = {
+                                Icon(imageVector = Icons.Default.CalendarToday, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(18.dp))
+                            },
+                            textStyle = AppInputTextStyle,
+                            colors = appOutlinedTextFieldColors(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Quick Presets Chips
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            FilterChip(
+                                selected = admissionDate == todayDateStr,
+                                onClick = {
+                                    admissionDate = todayDateStr
+                                    feeDueDate = viewModel.calculateNextDueDate(todayDateStr)
+                                },
+                                label = { Text("Today", fontSize = 10.sp) },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+
+                            val firstOfMonth = remember {
+                                val cal = java.util.Calendar.getInstance()
+                                cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(cal.time)
+                            }
+                            FilterChip(
+                                selected = admissionDate == firstOfMonth,
+                                onClick = {
+                                    admissionDate = firstOfMonth
+                                    feeDueDate = viewModel.calculateNextDueDate(firstOfMonth)
+                                    isExistingStudent = true
+                                },
+                                label = { Text("1st of Month", fontSize = 10.sp) },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+
+                            val oneMonthAgo = remember {
+                                val cal = java.util.Calendar.getInstance()
+                                cal.add(java.util.Calendar.DAY_OF_YEAR, -28)
+                                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(cal.time)
+                            }
+                            FilterChip(
+                                selected = admissionDate == oneMonthAgo,
+                                onClick = {
+                                    admissionDate = oneMonthAgo
+                                    feeDueDate = viewModel.calculateNextDueDate(oneMonthAgo)
+                                    isExistingStudent = true
+                                },
+                                label = { Text("28 Days Ago", fontSize = 10.sp) },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Next Due Date Input
+                        OutlinedTextField(
+                            value = feeDueDate,
+                            onValueChange = { feeDueDate = it },
+                            label = { Text("Next Fee Due Date (YYYY-MM-DD) *") },
+                            placeholder = { Text("YYYY-MM-DD") },
+                            leadingIcon = {
+                                Icon(imageVector = Icons.Default.Event, contentDescription = null, tint = OrangePrimaryDark, modifier = Modifier.size(18.dp))
+                            },
+                            supportingText = {
+                                Text("Auto-calculated in 28-day cycles from admission date", fontSize = 10.sp, color = WarmTextMuted)
+                            },
+                            textStyle = AppInputTextStyle,
+                            colors = appOutlinedTextFieldColors(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Current Payment Status for this student
+                        Text(
+                            text = "Current Payment Status:",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarmTextDark
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val feeVal = monthlyFee.toIntOrNull() ?: 1000
+                            FilterChip(
+                                selected = !isFeePaidUpfront,
+                                onClick = { isFeePaidUpfront = false },
+                                label = { Text("Fee Due Now (₹$feeVal)", fontSize = 11.sp, fontWeight = if (!isFeePaidUpfront) FontWeight.Bold else FontWeight.Normal) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFFEE2E2),
+                                    selectedLabelColor = DangerRed,
+                                    containerColor = PureWhite
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = !isFeePaidUpfront,
+                                    borderColor = if (!isFeePaidUpfront) DangerRed else Color(0xFFE2E8F0)
+                                )
+                            )
+
+                            FilterChip(
+                                selected = isFeePaidUpfront,
+                                onClick = { isFeePaidUpfront = true },
+                                label = { Text("Already Paid (₹0 Due)", fontSize = 11.sp, fontWeight = if (isFeePaidUpfront) FontWeight.Bold else FontWeight.Normal) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFDCFCE7),
+                                    selectedLabelColor = Color(0xFF16A34A),
+                                    containerColor = PureWhite
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isFeePaidUpfront,
+                                    borderColor = if (isFeePaidUpfront) Color(0xFF16A34A) else Color(0xFFE2E8F0)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 // Gender Selection
                 Text(
                     text = "Gender *",
@@ -745,6 +962,8 @@ fun AddStudentDialog(
                 Button(
                     onClick = {
                         if (fullName.isNotBlank() && mobile.isNotBlank()) {
+                            val feeVal = monthlyFee.toIntOrNull() ?: 1000
+                            val actualDue = if (isFeePaidUpfront) 0 else feeVal
                             val newStudent = viewModel.createStudentAndReturn(
                                 fullName = fullName,
                                 mobile = mobile,
@@ -753,10 +972,12 @@ fun AddStudentDialog(
                                 course = course,
                                 assignedSeat = selectedSeat.trim(),
                                 assignedShift = selectedShift,
-                                monthlyFee = monthlyFee.toIntOrNull() ?: 1000,
-                                initialDue = monthlyFee.toIntOrNull() ?: 1000,
+                                monthlyFee = feeVal,
+                                initialDue = actualDue,
                                 gender = gender,
-                                address = studentAddress
+                                address = studentAddress,
+                                joiningDate = admissionDate.trim(),
+                                feeDueDate = feeDueDate.trim()
                             )
                             if (newStudent != null && sendWelcomeWhatsApp) {
                                 viewModel.sendStudentWelcomeWhatsApp(context, newStudent)
@@ -874,6 +1095,16 @@ fun StudentDetailDialog(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(text = "Contact", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
                             Text(text = student.mobile, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(text = "Admission Date", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                            Text(text = student.joiningDate, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(text = "Next Fee Due Date", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                            Text(text = student.feeDueDate, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = if (student.dueAmount > 0) DangerRed else Color(0xFF16A34A))
                         }
                         if (student.address.isNotBlank()) {
                             Spacer(modifier = Modifier.height(6.dp))

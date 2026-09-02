@@ -106,6 +106,10 @@ fun SeatMapScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Seat Grid Map
+        val sortedSeats = remember(seats) {
+            seats.sortedBy { it.seatNumber.toIntOrNull() ?: Int.MAX_VALUE }
+        }
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             modifier = Modifier
@@ -115,7 +119,7 @@ fun SeatMapScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(seats) { seat ->
+            items(sortedSeats) { seat ->
                 SeatGridItem(
                     seat = seat,
                     onClick = { viewModel.selectSeatForAction(seat) }

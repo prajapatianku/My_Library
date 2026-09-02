@@ -374,14 +374,47 @@ class LibraryRepository(
         checkSubscriptionStatus()
         _shifts.value = account.shifts
         _libraryPlans.value = account.libraryPlans
-        _seats.value = account.seats
-        _students.value = account.students
+
+        // Auto-migration: Ensure seat numbers are pure numbers (1, 2, 3...) instead of legacy A-1, B-1
+        val hasLetterSeats = account.seats.any { it.seatNumber.any { char -> char.isLetter() } }
+        val (migratedSeats, migratedStudents, migratedPayments) = if (hasLetterSeats) {
+            val seatMapping = mutableMapOf<String, String>()
+            val newSeats = account.seats.mapIndexed { idx, seat ->
+                val newNum = (idx + 1).toString()
+                seatMapping[seat.seatNumber] = newNum
+                seat.copy(seatNumber = newNum)
+            }
+            val newStudents = account.students.map { stu ->
+                if (stu.assignedSeatNumber.isNotBlank() && seatMapping.containsKey(stu.assignedSeatNumber)) {
+                    stu.copy(assignedSeatNumber = seatMapping[stu.assignedSeatNumber] ?: stu.assignedSeatNumber)
+                } else {
+                    stu
+                }
+            }
+            val newPayments = account.payments.map { p ->
+                if (p.seatNumber.isNotBlank() && seatMapping.containsKey(p.seatNumber)) {
+                    p.copy(seatNumber = seatMapping[p.seatNumber] ?: p.seatNumber)
+                } else {
+                    p
+                }
+            }
+            Triple(newSeats, newStudents, newPayments)
+        } else {
+            Triple(account.seats, account.students, account.payments)
+        }
+
+        _seats.value = migratedSeats
+        _students.value = migratedStudents
         _attendance.value = account.attendance
-        _payments.value = account.payments
+        _payments.value = migratedPayments
         _expenses.value = account.expenses
         _registrationRequests.value = account.registrationRequests
         _auditLogs.value = account.auditLogs
         _saasPurchaseHistory.value = account.saasPurchaseHistory
+
+        if (hasLetterSeats) {
+            persistCurrentAccount()
+        }
     }
 
     private fun persistCurrentAccount() {
@@ -1071,31 +1104,18 @@ class LibraryRepository(
     // ==========================================
 
     fun generateCleanSeats(capacity: Int): List<Seat> {
-        val list = mutableListOf<Seat>()
-        val prefixes = listOf("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L")
-        var seatIndex = 1
-
-        for (p in prefixes) {
-            for (i in 1..10) {
-                if (seatIndex > capacity) break
-                val seatNum = "$p-$i"
-                list.add(
-                    Seat(
-                        seatNumber = seatNum,
-                        seatType = SeatType.FIXED,
-                        status = SeatStatus.AVAILABLE,
-                        assignedStudentId = null,
-                        assignedStudentName = null,
-                        assignedShiftId = null,
-                        assignedShiftName = null,
-                        expiryDate = null
-                    )
-                )
-                seatIndex++
-            }
-            if (seatIndex > capacity) break
+        return (1..capacity).map { seatIndex ->
+            Seat(
+                seatNumber = seatIndex.toString(),
+                seatType = SeatType.FIXED,
+                status = SeatStatus.AVAILABLE,
+                assignedStudentId = null,
+                assignedStudentName = null,
+                assignedShiftId = null,
+                assignedShiftName = null,
+                expiryDate = null
+            )
         }
-        return list
     }
 
     private fun createDemoOwner(): OwnerProfile {
@@ -1160,31 +1180,25 @@ class LibraryRepository(
 
     private fun generateDemoSeats(): List<Seat> {
         val list = mutableListOf<Seat>()
-        val prefixes = listOf("A", "B", "C", "D", "E", "F")
-        var seatIndex = 1
+        for (i in 1..60) {
+            val seatNum = i.toString()
+            val isOccupied = i in listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 14, 15, 21, 22, 25)
+            val isMaintenance = i == 30
 
-        for (p in prefixes) {
-            for (i in 1..10) {
-                val seatNum = "$p-$i"
-                val isOccupied = seatIndex in listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 14, 15, 21, 22, 25)
-                val isMaintenance = seatIndex == 30
-
-                list.add(
-                    Seat(
-                        seatNumber = seatNum,
-                        seatType = SeatType.FIXED,
-                        status = when {
-                            isMaintenance -> SeatStatus.MAINTENANCE
-                            isOccupied -> SeatStatus.OCCUPIED
-                            else -> SeatStatus.AVAILABLE
-                        },
-                        assignedStudentName = if (isOccupied) "Student #$seatIndex" else null,
-                        assignedShiftName = if (isOccupied) (if (seatIndex % 2 == 0) "Full Day" else "Morning Shift") else null,
-                        expiryDate = if (isOccupied) "2026-09-30" else null
-                    )
+            list.add(
+                Seat(
+                    seatNumber = seatNum,
+                    seatType = SeatType.FIXED,
+                    status = when {
+                        isMaintenance -> SeatStatus.MAINTENANCE
+                        isOccupied -> SeatStatus.OCCUPIED
+                        else -> SeatStatus.AVAILABLE
+                    },
+                    assignedStudentName = if (isOccupied) "Student #$i" else null,
+                    assignedShiftName = if (isOccupied) (if (i % 2 == 0) "Full Day" else "Morning Shift") else null,
+                    expiryDate = if (isOccupied) "2026-09-30" else null
                 )
-                seatIndex++
-            }
+            )
         }
         return list
     }
@@ -1198,7 +1212,7 @@ class LibraryRepository(
                 whatsapp = "+91 9811223344",
                 email = "aryan.patel@gmail.com",
                 course = "UPSC CSE 2027",
-                assignedSeatNumber = "A-1",
+                assignedSeatNumber = "1",
                 assignedShiftName = "Full Day (24/7 Access)",
                 monthlyFee = 1200,
                 dueAmount = 0,
@@ -1212,7 +1226,7 @@ class LibraryRepository(
                 whatsapp = "+91 9822334455",
                 email = "priya.rajput@gmail.com",
                 course = "UPPSC Combined State Exam",
-                assignedSeatNumber = "A-2",
+                assignedSeatNumber = "2",
                 assignedShiftName = "Morning Shift",
                 monthlyFee = 600,
                 dueAmount = 0,
@@ -1226,7 +1240,7 @@ class LibraryRepository(
                 whatsapp = "+91 9833445566",
                 email = "rohan.c@gmail.com",
                 course = "SSC CGL / Banking PO",
-                assignedSeatNumber = "A-3",
+                assignedSeatNumber = "3",
                 assignedShiftName = "Evening Shift",
                 monthlyFee = 650,
                 dueAmount = 650,
@@ -1240,7 +1254,7 @@ class LibraryRepository(
                 whatsapp = "+91 9844556677",
                 email = "sneha.gupta@yahoo.com",
                 course = "Chartered Accountancy (CA Final)",
-                assignedSeatNumber = "A-4",
+                assignedSeatNumber = "4",
                 assignedShiftName = "Full Day (24/7 Access)",
                 monthlyFee = 1200,
                 dueAmount = 0,
@@ -1254,7 +1268,7 @@ class LibraryRepository(
                 whatsapp = "+91 9855667788",
                 email = "vikas.yadav@gmail.com",
                 course = "GATE / PSU Aspirant",
-                assignedSeatNumber = "A-5",
+                assignedSeatNumber = "5",
                 assignedShiftName = "Afternoon Shift",
                 monthlyFee = 550,
                 dueAmount = 550,
@@ -1268,7 +1282,7 @@ class LibraryRepository(
                 whatsapp = "+91 9866778899",
                 email = "ananya.singh@outlook.com",
                 course = "Judiciary (PCS-J)",
-                assignedSeatNumber = "A-6",
+                assignedSeatNumber = "6",
                 assignedShiftName = "Full Day (24/7 Access)",
                 monthlyFee = 1200,
                 dueAmount = 0,
@@ -1282,7 +1296,7 @@ class LibraryRepository(
                 whatsapp = "+91 9877889900",
                 email = "deepak.k@gmail.com",
                 course = "UGC NET / JRF History",
-                assignedSeatNumber = "A-7",
+                assignedSeatNumber = "7",
                 assignedShiftName = "Morning Shift",
                 monthlyFee = 600,
                 dueAmount = 0,
@@ -1296,7 +1310,7 @@ class LibraryRepository(
                 whatsapp = "+91 9888990011",
                 email = "kavita.meena@gmail.com",
                 course = "State PCS / Teaching Exam",
-                assignedSeatNumber = "A-8",
+                assignedSeatNumber = "8",
                 assignedShiftName = "Evening Shift",
                 monthlyFee = 650,
                 dueAmount = 0,
@@ -1336,7 +1350,7 @@ class LibraryRepository(
                         studentName = name,
                         studentCode = code,
                         shiftName = if (stuIdx % 2 == 0) "Full Day" else "Morning Shift",
-                        seatNumber = "A-${stuIdx + 1}",
+                        seatNumber = "${stuIdx + 1}",
                         attendanceDate = dateStr,
                         checkInTime = if (isPresent) "07:30 AM" else null,
                         status = if (isPresent) AttendanceStatus.PRESENT else AttendanceStatus.ABSENT
@@ -1360,7 +1374,7 @@ class LibraryRepository(
                 receiptNumber = "REC-2026-0101",
                 notes = "Full Day Monthly Access (Aug 2026)",
                 shiftName = "Full Day",
-                seatNumber = "A-1"
+                seatNumber = "1"
             ),
             StudentPayment(
                 studentId = "s2",
@@ -1373,7 +1387,7 @@ class LibraryRepository(
                 receiptNumber = "REC-2026-0102",
                 notes = "Morning Shift Fee",
                 shiftName = "Morning Shift",
-                seatNumber = "A-2"
+                seatNumber = "2"
             ),
             StudentPayment(
                 studentId = "s4",
@@ -1386,7 +1400,7 @@ class LibraryRepository(
                 receiptNumber = "REC-2026-0103",
                 notes = "Quarterly Full Day Advance Fee",
                 shiftName = "Full Day",
-                seatNumber = "A-4"
+                seatNumber = "4"
             ),
             StudentPayment(
                 studentId = "s6",
@@ -1399,7 +1413,7 @@ class LibraryRepository(
                 receiptNumber = "REC-2026-0104",
                 notes = "Monthly fee via IMPS transfer",
                 shiftName = "Full Day",
-                seatNumber = "A-6"
+                seatNumber = "6"
             )
         )
     }
@@ -1449,7 +1463,7 @@ class LibraryRepository(
                 email = "aman.verma@gmail.com",
                 course = "SSC CGL 2026",
                 requestedShift = "Morning Shift",
-                preferredSeat = "Seat A-12",
+                preferredSeat = "Seat 12",
                 requestDate = "2026-08-25",
                 status = "pending"
             ),
@@ -1459,7 +1473,7 @@ class LibraryRepository(
                 email = "pooja.sharma@yahoo.com",
                 course = "NEET PG Preparation",
                 requestedShift = "Full Day (24/7 Access)",
-                preferredSeat = "Seat B-04",
+                preferredSeat = "Seat 4",
                 requestDate = "2026-08-24",
                 status = "pending"
             )
@@ -1503,7 +1517,7 @@ class LibraryRepository(
         return listOf(
             AuditLog(action = "System Initialized", entity = "Library", details = "Saraswati Study Point onboarded", timestamp = "2026-08-01 09:00 AM"),
             AuditLog(action = "Fee Collected", entity = "Payment", details = "₹1,200 collected for Aryan Patel (REC-0810)", timestamp = "2026-08-25 08:30 AM"),
-            AuditLog(action = "Seat Assigned", entity = "Seat", details = "Seat A-01 assigned to Aryan Patel (Full Day)", timestamp = "2026-08-01 10:00 AM")
+            AuditLog(action = "Seat Assigned", entity = "Seat", details = "Seat 1 assigned to Aryan Patel (Full Day)", timestamp = "2026-08-01 10:00 AM")
         )
     }
 

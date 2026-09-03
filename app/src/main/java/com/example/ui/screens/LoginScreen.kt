@@ -552,8 +552,8 @@ fun LoginScreen(
                                         OutlinedTextField(
                                             value = enteredOtp,
                                             onValueChange = { if (it.length <= 6) enteredOtp = it },
-                                            label = { Text("Enter 4-Digit OTP *") },
-                                            placeholder = { Text("e.g. 4829") },
+                                            label = { Text("Enter 6-Digit OTP *") },
+                                            placeholder = { Text("e.g. 582910") },
                                             textStyle = AppInputTextStyle,
                                             colors = appOutlinedTextFieldColors(),
                                             leadingIcon = {

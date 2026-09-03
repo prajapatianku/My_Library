@@ -249,12 +249,17 @@ fun MainApp(
     var selectedTab by remember { mutableStateOf(MainNavigationTab.DASHBOARD) }
     var showSplash by remember { mutableStateOf(true) }
     var showSuperAdminScreen by remember { mutableStateOf(false) }
-    var showSuperAdminLoginDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(toastMessage) {
         toastMessage?.let { msg ->
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             viewModel.clearToast()
+        }
+    }
+
+    LaunchedEffect(isSuperAdminAuth) {
+        if (isSuperAdminAuth) {
+            showSuperAdminScreen = true
         }
     }
 
@@ -310,19 +315,12 @@ fun MainApp(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Contact Platform Support", fontWeight = FontWeight.Bold)
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                TextButton(onClick = { showSuperAdminLoginDialog = true }) {
-                    Text("Platform Owner Login", fontSize = 12.sp, color = WarmTextMuted)
-                }
             }
         }
     } else if (!isLoggedIn) {
         LoginScreen(
             viewModel = viewModel,
-            modifier = Modifier.fillMaxSize(),
-            onOpenSuperAdmin = {
-                if (isSuperAdminAuth) showSuperAdminScreen = true else showSuperAdminLoginDialog = true
-            }
+            modifier = Modifier.fillMaxSize()
         )
     } else if (!isOnboardingDone) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -404,23 +402,12 @@ fun MainApp(
                     MainNavigationTab.SETTINGS -> SettingsScreen(
                         viewModel = viewModel,
                         onOpenSuperAdmin = {
-                            if (isSuperAdminAuth) showSuperAdminScreen = true else showSuperAdminLoginDialog = true
+                            if (isSuperAdminAuth) showSuperAdminScreen = true
                         }
                     )
                 }
             }
         }
-    }
-
-    if (showSuperAdminLoginDialog) {
-        SuperAdminLoginDialog(
-            viewModel = viewModel,
-            onSuccess = {
-                showSuperAdminLoginDialog = false
-                showSuperAdminScreen = true
-            },
-            onDismiss = { showSuperAdminLoginDialog = false }
-        )
     }
 
     // Global Modal & Dialog Controllers (Accessible across all tabs & home quick actions)

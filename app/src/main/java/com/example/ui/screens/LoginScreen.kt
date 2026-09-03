@@ -626,21 +626,6 @@ fun LoginScreen(
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(18.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onOpenSuperAdmin() }
-                                .padding(vertical = 6.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Shield, contentDescription = null, tint = WarmTextMuted, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Platform Owner Access", fontSize = 12.sp, color = WarmTextMuted, fontWeight = FontWeight.Bold)
-                        }
                     }
 
                     // -------------------------------------------------------------

@@ -26,10 +26,11 @@ data class SavedLibraryAccount(
     val saasPurchaseHistory: List<SaaSPurchaseRecord> = emptyList()
 )
 
-class LibraryAccountStorage(private val context: Context?) {
+class LibraryAccountStorage(private val context: Context? = null) {
 
+    private val ctx = context ?: com.example.LibraryApp.appContext
     private val prefs: SharedPreferences? = try {
-        context?.getSharedPreferences("library_accounts_v2", Context.MODE_PRIVATE)
+        ctx?.getSharedPreferences("library_accounts_v2", Context.MODE_PRIVATE)
     } catch (e: Exception) {
         null
     }

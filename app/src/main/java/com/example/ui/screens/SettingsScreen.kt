@@ -324,70 +324,72 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Platform Owner (Super Admin) Portal Item
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .clickable { onOpenSuperAdmin() },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = PureWhite),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NavyPrimary.copy(alpha = 0.25f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Row(
+                // Platform Owner (Super Admin) Portal Item - STRICTLY HIDDEN UNLESS AUTHENTICATED
+                val isSuperAdminAuth by viewModel.isSuperAdminAuthenticated.collectAsState()
+                if (isSuperAdminAuth) {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 4.dp)
+                            .clickable { onOpenSuperAdmin() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = PureWhite),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NavyPrimary.copy(alpha = 0.25f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(NavyPrimary.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AdminPanelSettings,
-                                    contentDescription = "Super Admin",
-                                    tint = NavyPrimary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Platform Owner Panel",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyPrimary
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(NavyPrimary.copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AdminPanelSettings,
+                                        contentDescription = "Super Admin",
+                                        tint = NavyPrimary,
+                                        modifier = Modifier.size(20.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(color = AmberTertiary, shape = RoundedCornerShape(4.dp)) {
-                                        Text("ADMIN", fontSize = 9.sp, fontWeight = FontWeight.Black, color = NavyPrimary, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
-                                    }
                                 }
-                                Text(
-                                    text = "All libraries, pricing, coupons, broadcasts & revenue",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = WarmTextMuted
-                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "Return to Platform Owner Panel",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NavyPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(color = AmberTertiary, shape = RoundedCornerShape(4.dp)) {
+                                            Text("ADMIN", fontSize = 9.sp, fontWeight = FontWeight.Black, color = NavyPrimary, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                        }
+                                    }
+                                    Text(
+                                        text = "All libraries, pricing, coupons, broadcasts & revenue",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = WarmTextMuted
+                                    )
+                                }
                             }
+
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = NavyPrimary
+                            )
                         }
-
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = NavyPrimary
-                        )
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
 
                 Card(
                     modifier = Modifier

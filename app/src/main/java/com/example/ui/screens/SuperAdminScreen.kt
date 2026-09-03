@@ -56,6 +56,11 @@ fun SuperAdminScreen(
     val platformTransactions by viewModel.platformTransactions.collectAsState()
     val platformBroadcasts by viewModel.platformBroadcasts.collectAsState()
     val platformAppControl by viewModel.platformAppControl.collectAsState()
+    val platformOwners by viewModel.platformRepository.ownersList.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.platformRepository.refreshOwners()
+    }
 
     var showGrantSubDialogForAccount by remember { mutableStateOf<SavedLibraryAccount?>(null) }
     var showOwnerDetailDialog by remember { mutableStateOf<SavedLibraryAccount?>(null) }
@@ -137,7 +142,7 @@ fun SuperAdminScreen(
             when (selectedTab) {
                 SuperAdminTab.OVERVIEW -> SuperAdminOverviewTab(
                     transactions = platformTransactions,
-                    allAccounts = viewModel.platformRepository.getAllLibraryOwners(),
+                    allAccounts = platformOwners,
                     onExportRevenue = {
                         val csv = viewModel.platformRepository.exportPlatformRevenueCsv()
                         shareCsvContent(context, "Vidyara-Revenue-Report.csv", csv)
@@ -495,7 +500,12 @@ fun SuperAdminDirectoryTab(
     onInspectOwner: (SavedLibraryAccount) -> Unit,
     onGrantSubscription: (SavedLibraryAccount) -> Unit
 ) {
-    val allAccounts = remember { viewModel.platformRepository.getAllLibraryOwners() }
+    val allAccounts by viewModel.platformRepository.ownersList.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.platformRepository.refreshOwners()
+    }
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedPlanFilter by remember { mutableStateOf("ALL") }
     var selectedStatusFilter by remember { mutableStateOf("ALL") }
@@ -505,7 +515,9 @@ fun SuperAdminDirectoryTab(
             val matchesQuery = acc.ownerProfile.fullName.contains(searchQuery, ignoreCase = true) ||
                     acc.ownerProfile.phone.contains(searchQuery) ||
                     acc.ownerProfile.email.contains(searchQuery, ignoreCase = true) ||
-                    acc.library.name.contains(searchQuery, ignoreCase = true)
+                    acc.library.name.contains(searchQuery, ignoreCase = true) ||
+                    acc.library.city.contains(searchQuery, ignoreCase = true) ||
+                    acc.library.state.contains(searchQuery, ignoreCase = true)
 
             val matchesPlan = when (selectedPlanFilter) {
                 "ALL" -> true
@@ -535,7 +547,7 @@ fun SuperAdminDirectoryTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search owner name, phone, library...") },
+            placeholder = { Text("Search owner name, phone, library, city...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = NavyPrimary) },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
@@ -609,8 +621,11 @@ fun OwnerDirectoryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(account.library.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = WarmTextDark)
-                    Text("${account.ownerProfile.fullName} • ${account.ownerProfile.phone}", fontSize = 11.sp, color = WarmTextMuted)
+                    Text(account.library.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = WarmTextDark)
+                    Text("👤 ${account.ownerProfile.fullName} • 📞 ${account.ownerProfile.phone}", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.Medium)
+                    if (account.ownerProfile.email.isNotBlank()) {
+                        Text("✉️ ${account.ownerProfile.email}", fontSize = 10.sp, color = WarmTextMuted)
+                    }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -644,6 +659,19 @@ fun OwnerDirectoryCard(
                 }
             }
 
+            // Location details ("where are they from")
+            val locationParts = listOf(account.library.city, account.library.state, account.library.location, account.library.address)
+                .filter { it.isNotBlank() }
+                .distinct()
+            val locationStr = if (locationParts.isNotEmpty()) locationParts.joinToString(", ") else "Location not set"
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(locationStr, fontSize = 11.sp, color = WarmTextDark, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
             HorizontalDivider(color = Color(0xFFF1F5F9))
             Spacer(modifier = Modifier.height(10.dp))
@@ -653,9 +681,9 @@ fun OwnerDirectoryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("👥 ${account.students.size} Students", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.Medium)
-                Text("🪑 ${account.seats.size} Desks", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.Medium)
-                Text("🏢 ${account.branches.size} Branch(es)", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.Medium)
+                Text("👥 ${account.students.size} Enrolled", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.SemiBold)
+                Text("🪑 ${account.library.totalSeats} Total Seats", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.SemiBold)
+                Text("🏢 ${account.branches.size} Branch(es)", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(12.dp))

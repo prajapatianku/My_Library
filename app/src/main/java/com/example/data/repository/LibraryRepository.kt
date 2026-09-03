@@ -438,6 +438,11 @@ class LibraryRepository(
                 saasPurchaseHistory = _saasPurchaseHistory.value
             )
             storage.saveAccount(currentAccount)
+            try {
+                PlatformRepository.getInstance().refreshOwners()
+            } catch (e: Exception) {
+                // Ignore if not initialized yet
+            }
 
             // Cloud sync to Supabase
             val phoneKey = currentAccount.ownerProfile.phone.replace("+", "").replace(" ", "").replace("-", "").trim()

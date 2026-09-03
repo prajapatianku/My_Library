@@ -903,14 +903,19 @@ class LibraryViewModel(
         return success
     }
 
-    fun sendOtp(identifier: String, viaEmail: Boolean = false): String {
-        val otp = repository.sendOtp(identifier, viaEmail)
-        _uiToastMessage.value = if (viaEmail || identifier.contains("@")) {
-            "✅ Verification code sent to your email. Please check your inbox."
+    fun requestLoginOtp(identifier: String): com.example.data.repository.LibraryRepository.OtpDispatchResult {
+        val result = repository.requestLoginOtp(identifier)
+        if (result.isSuccess) {
+            _uiToastMessage.value = "✅ Verification code dispatched to ${result.targetEmail}."
         } else {
-            "✅ Verification code sent via SMS. Please check your messages."
+            _uiToastMessage.value = result.message
         }
-        return otp
+        return result
+    }
+
+    fun sendOtp(identifier: String, viaEmail: Boolean = false): String {
+        val result = requestLoginOtp(identifier)
+        return result.otpCode
     }
 
     fun verifyOtpAndLogin(identifier: String, otp: String): Boolean {

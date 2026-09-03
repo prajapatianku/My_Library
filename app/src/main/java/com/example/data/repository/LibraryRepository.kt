@@ -182,35 +182,79 @@ class LibraryRepository(
 
     private var activeResetSession: PasswordResetSession? = null
 
-    fun sendOtp(identifier: String, viaEmail: Boolean = false): String {
-        val randomOtp = (100000..999999).random().toString()
-        _lastGeneratedOtp.value = randomOtp
-        val isEmail = viaEmail || identifier.contains("@")
+    data class OtpDispatchResult(
+        val isSuccess: Boolean,
+        val message: String,
+        val targetEmail: String = "",
+        val otpCode: String = ""
+    )
+
+    fun requestLoginOtp(identifier: String): OtpDispatchResult {
+        val trimmed = identifier.trim()
+        if (trimmed.isBlank()) {
+            return OtpDispatchResult(false, "Please enter your Phone Number or Email.")
+        }
+
+        // 1. Strict Format Validation
+        val isEmail = trimmed.contains("@")
         if (isEmail) {
-            val email = identifier.trim()
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                com.example.data.auth.EmailSenderService.sendOtpEmail(
-                    recipientEmail = email,
-                    otpCode = randomOtp,
-                    ownerName = "Library Owner"
-                )
+            val emailPattern = android.util.Patterns.EMAIL_ADDRESS
+            if (!emailPattern.matcher(trimmed).matches()) {
+                return OtpDispatchResult(false, "Please enter a valid email address (e.g. name@example.com).")
             }
         } else {
-            // Phone SMS is on hold: deliver to the account's registered email
-            val matchedAccount = storage.findAccount(identifier)
-            val registeredEmail = matchedAccount?.ownerProfile?.email?.trim() ?: ""
-            if (registeredEmail.isNotBlank()) {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    com.example.data.auth.EmailSenderService.sendOtpEmail(
-                        recipientEmail = registeredEmail,
-                        otpCode = randomOtp,
-                        ownerName = matchedAccount?.ownerProfile?.fullName ?: "Library Owner"
-                    )
-                }
+            val digits = trimmed.filter { it.isDigit() }
+            if (digits.length < 10) {
+                return OtpDispatchResult(false, "Please enter a valid 10-digit Phone Number or valid Email address.")
             }
         }
-        addAuditLog("OTP Dispatched", "Auth", "One-time code sent for $identifier")
-        return randomOtp
+
+        // 2. Strict Registered Account Check
+        var matchedAccount = storage.findAccount(trimmed)
+        if (matchedAccount == null) {
+            matchedAccount = fetchCloudAccount(trimmed)
+        }
+
+        if (matchedAccount == null) {
+            return OtpDispatchResult(
+                isSuccess = false,
+                message = "No registered account found with '$trimmed'. Please verify your details or Sign Up."
+            )
+        }
+
+        // 3. Registered Email Check
+        val registeredEmail = matchedAccount.ownerProfile.email.trim()
+        if (registeredEmail.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(registeredEmail).matches()) {
+            return OtpDispatchResult(
+                isSuccess = false,
+                message = "No valid email address registered for this account. Please log in with your password."
+            )
+        }
+
+        // 4. Dispatch 6-Digit OTP to Verified Registered Email
+        val randomOtp = (100000..999999).random().toString()
+        _lastGeneratedOtp.value = randomOtp
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            com.example.data.auth.EmailSenderService.sendOtpEmail(
+                recipientEmail = registeredEmail,
+                otpCode = randomOtp,
+                ownerName = matchedAccount.ownerProfile.fullName.ifBlank { "Library Owner" }
+            )
+        }
+
+        addAuditLog("OTP Dispatched", "Auth", "One-time code sent to registered email $registeredEmail for $trimmed")
+        return OtpDispatchResult(
+            isSuccess = true,
+            message = "A 6-digit OTP has been dispatched to $registeredEmail. Please check your inbox.",
+            targetEmail = registeredEmail,
+            otpCode = randomOtp
+        )
+    }
+
+    fun sendOtp(identifier: String, viaEmail: Boolean = false): String {
+        val result = requestLoginOtp(identifier)
+        return result.otpCode
     }
 
     fun verifyOtpAndLogin(identifier: String, enteredOtp: String): Boolean {

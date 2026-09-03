@@ -341,14 +341,14 @@ fun LoginScreen(
 
                             // METHOD 1: PASSWORD LOGIN (Exact match to Mockup!)
                             if (loginMethod == LoginMethod.PASSWORD) {
-                                // Field 1: Email or Username
+                                // Field 1: Phone Number or Email
                                 OutlinedTextField(
                                     value = loginPhoneOrEmail,
                                     onValueChange = { loginPhoneOrEmail = it },
-                                    placeholder = { Text("Email or Username", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                                    placeholder = { Text("Phone Number or Email", color = Color(0xFF94A3B8), fontSize = 14.sp) },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.Outlined.Mail,
+                                            imageVector = Icons.Outlined.PhoneAndroid,
                                             contentDescription = null,
                                             tint = Color(0xFF0066FF),
                                             modifier = Modifier.size(20.dp)
@@ -419,7 +419,7 @@ fun LoginScreen(
                                             if (loginPhoneOrEmail.isNotBlank()) {
                                                 viewModel.loginWithPassword(loginPhoneOrEmail, loginPassword)
                                             } else {
-                                                validationError = "Please enter your Email or Username."
+                                                validationError = "Please enter your Phone Number or Email."
                                             }
                                         }
                                     )
@@ -465,7 +465,7 @@ fun LoginScreen(
                                 Button(
                                     onClick = {
                                         if (loginPhoneOrEmail.isBlank() || loginPassword.isBlank()) {
-                                            validationError = "Please enter both Email/Username and Password."
+                                            validationError = "Please enter both Phone Number/Email and Password."
                                         } else {
                                             viewModel.loginWithPassword(loginPhoneOrEmail, loginPassword)
                                         }
@@ -504,11 +504,15 @@ fun LoginScreen(
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     OutlinedTextField(
                                         value = loginPhoneOrEmail,
-                                        onValueChange = { loginPhoneOrEmail = it },
-                                        placeholder = { Text("Registered Email or Phone", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                                        onValueChange = {
+                                            loginPhoneOrEmail = it
+                                            isOtpSent = false
+                                            validationError = null
+                                        },
+                                        placeholder = { Text("Phone Number or Email", color = Color(0xFF94A3B8), fontSize = 14.sp) },
                                         leadingIcon = {
                                             Icon(
-                                                imageVector = Icons.Outlined.Mail,
+                                                imageVector = Icons.Outlined.PhoneAndroid,
                                                 contentDescription = null,
                                                 tint = Color(0xFF0066FF),
                                                 modifier = Modifier.size(20.dp)
@@ -537,12 +541,14 @@ fun LoginScreen(
                                     if (!isOtpSent) {
                                         Button(
                                             onClick = {
-                                                if (loginPhoneOrEmail.isBlank()) {
-                                                    validationError = "Please enter your Phone Number or Email first."
-                                                } else {
-                                                    viewModel.sendOtp(loginPhoneOrEmail, isEmailInput)
+                                                val result = viewModel.requestLoginOtp(loginPhoneOrEmail)
+                                                if (result.isSuccess) {
+                                                    validationError = null
                                                     isOtpSent = true
-                                                    otpMessageBanner = if (isEmailInput) "A verification code has been dispatched to your email ($loginPhoneOrEmail). Please check your inbox." else "A verification code has been dispatched to your registered email. Please check your inbox."
+                                                    otpMessageBanner = result.message
+                                                } else {
+                                                    validationError = result.message
+                                                    isOtpSent = false
                                                 }
                                             },
                                             modifier = Modifier
@@ -651,8 +657,13 @@ fun LoginScreen(
                                             )
                                             TextButton(
                                                 onClick = {
-                                                    val generatedCode = viewModel.sendOtp(loginPhoneOrEmail)
-                                                    otpMessageBanner = "New OTP sent to your registered email."
+                                                    val result = viewModel.requestLoginOtp(loginPhoneOrEmail)
+                                                    if (result.isSuccess) {
+                                                        validationError = null
+                                                        otpMessageBanner = "New OTP sent to ${result.targetEmail}."
+                                                    } else {
+                                                        validationError = result.message
+                                                    }
                                                 }
                                             ) {
                                                 Text("Resend Code", color = Color(0xFF0066FF), fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -1583,28 +1594,6 @@ fun LoginScreen(
                         }
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Discreet Super Admin link
-            TextButton(
-                onClick = onOpenSuperAdmin,
-                modifier = Modifier.testTag("super_admin_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Shield,
-                    contentDescription = null,
-                    tint = Color(0xFF64748B),
-                    modifier = Modifier.size(15.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Super Admin Portal",
-                    color = Color(0xFF64748B),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
             }
 
             Spacer(modifier = Modifier.height(28.dp))

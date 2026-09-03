@@ -392,7 +392,8 @@ fun MainApp(
             bottomBar = {
                 NavigationBar(
                     containerColor = PureWhite,
-                    tonalElevation = 4.dp
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                 ) {
                     // 5 primary tabs for clean bottom navigation
                     val primaryTabs = listOf(
@@ -423,11 +424,11 @@ fun MainApp(
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF0066FF),
-                                selectedTextColor = Color(0xFF0066FF),
-                                indicatorColor = Color(0xFFEFF6FF),
-                                unselectedIconColor = Color(0xFF64748B),
-                                unselectedTextColor = Color(0xFF64748B)
+                                selectedIconColor = Color(0xFF0747A6),
+                                selectedTextColor = Color(0xFF0747A6),
+                                indicatorColor = Color(0xFFF0F6FE),
+                                unselectedIconColor = Color(0xFF6B7280),
+                                unselectedTextColor = Color(0xFF6B7280)
                             )
                         )
                     }

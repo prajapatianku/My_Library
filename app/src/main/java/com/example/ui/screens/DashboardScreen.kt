@@ -77,79 +77,55 @@ fun DashboardScreen(
             (if (daysRemaining in 0..7) 1 else 0) +
             pendingRegistrationRequests.size
 
-    Box(modifier = modifier.fillMaxSize().background(Color(0xFFF8FAFC))) {
+    Box(modifier = modifier.fillMaxSize().background(Color(0xFFF5F7FB))) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            // Top App Bar with Centered Logo & Notification Bell
+            // Top App Bar with Centered Logo & Notification Bell (Seamlessly on background canvas)
             item {
-                Surface(
-                    color = PureWhite,
-                    modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 1.dp
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
+                    // Left spacer matching bell size to ensure perfectly centered logo
+                    Spacer(modifier = Modifier.size(28.dp))
+
+                    // Center: Official Vidyara Header Logo Lockup
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_vidyara_header_logo),
+                        contentDescription = "Vidyara",
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .height(26.dp)
+                            .wrapContentWidth()
+                    )
+
+                    // Right: Notification Bell in Navy with royal blue notification dot
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .clickable { showNotificationCenter = true },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Spacer(modifier = Modifier.width(36.dp))
-
-                        // Center: Vidyara Badge and Brand Text
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_vidyara_badge),
-                                contentDescription = "Vidyara Logo",
-                                modifier = Modifier.size(32.dp)
+                        Icon(
+                            imageVector = Icons.Outlined.Notifications,
+                            contentDescription = "Notifications",
+                            tint = Color(0xFF021B57),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        if (unreadNotificationsCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .align(Alignment.TopEnd)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF0066FF))
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Vidyara",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFF0C2146),
-                                letterSpacing = (-0.5).sp
-                            )
-                        }
-
-                        // Right: Notification Bell with Badge
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .clickable { showNotificationCenter = true },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Notifications,
-                                contentDescription = "Notifications",
-                                tint = Color(0xFF0066FF),
-                                modifier = Modifier.size(26.dp)
-                            )
-                            if (unreadNotificationsCount > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .align(Alignment.TopEnd)
-                                        .clip(CircleShape)
-                                        .background(DangerRed),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (unreadNotificationsCount > 9) "9+" else "$unreadNotificationsCount",
-                                        color = Color.White,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -179,17 +155,17 @@ fun DashboardScreen(
                 }
             }
 
-            // Active Platform Broadcast Announcement Banner
+            // Active Platform Broadcast Announcement Banner (Vibrant Royal Blue matching mockup)
             activeBroadcast?.let { bc ->
                 item {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A2D6E)), // Deep Royal Navy
-                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0747A6)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -198,7 +174,7 @@ fun DashboardScreen(
                             Icon(
                                 imageVector = Icons.Filled.Campaign,
                                 contentDescription = "Broadcast",
-                                tint = Color(0xFFFBBF24), // Gold/Amber
+                                tint = Color(0xFFFBBF24),
                                 modifier = Modifier.size(28.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -207,7 +183,7 @@ fun DashboardScreen(
                                     text = bc.title,
                                     color = Color(0xFFFBBF24),
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
@@ -226,7 +202,7 @@ fun DashboardScreen(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Dismiss",
-                                    tint = Color.White.copy(alpha = 0.85f),
+                                    tint = Color.White.copy(alpha = 0.9f),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -275,7 +251,7 @@ fun DashboardScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -285,25 +261,25 @@ fun DashboardScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFEFF6FF)),
+                                .background(Color(0xFFEEF2F6)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = Color(0xFF0066FF),
-                                modifier = Modifier.size(24.dp)
+                                tint = Color(0xFF021B57),
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
                                 text = "Welcome, ${owner.fullName.split(" ").firstOrNull() ?: "Owner"}",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF0F172A)
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0A1931)
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Row(
@@ -316,15 +292,15 @@ fun DashboardScreen(
                                 Icon(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = null,
-                                    tint = Color(0xFF0066FF),
-                                    modifier = Modifier.size(14.dp)
+                                    tint = Color(0xFF0747A6),
+                                    modifier = Modifier.size(13.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Text(
                                     text = activeBranch?.name ?: library.name,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF475569),
+                                    color = Color(0xFF4B5563),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f, fill = false)
@@ -333,7 +309,7 @@ fun DashboardScreen(
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = null,
-                                    tint = Color(0xFF0066FF),
+                                    tint = Color(0xFF0747A6),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -343,8 +319,8 @@ fun DashboardScreen(
                     // Plan Badge (★ Premium)
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = PureWhite,
-                        border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFD0D7E2)),
                         modifier = Modifier
                             .clickable { viewModel.requestUpgrade("view_plans") }
                             .padding(start = 8.dp)
@@ -355,7 +331,7 @@ fun DashboardScreen(
                         ) {
                             Text(
                                 text = "★",
-                                color = Color(0xFF0066FF),
+                                color = Color(0xFF0747A6),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -368,21 +344,21 @@ fun DashboardScreen(
                                 },
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F172A)
+                                color = Color(0xFF0A1931)
                             )
                         }
                     }
                 }
             }
 
-            // Hero Collection Card (Royal Blue Gradient)
+            // Hero Collection Card (Royal Blue Gradient with LIVE pill badge)
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(22.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Box(
                         modifier = Modifier
@@ -390,12 +366,12 @@ fun DashboardScreen(
                             .background(
                                 Brush.horizontalGradient(
                                     listOf(
-                                        Color(0xFF0052CC), // Royal Blue
-                                        Color(0xFF072B6B)  // Dark Blue
+                                        Color(0xFF004CB8), // Royal Sapphire Blue
+                                        Color(0xFF052B75)  // Navy Depth
                                     )
                                 )
                             )
-                            .padding(20.dp)
+                            .padding(horizontal = 18.dp, vertical = 16.dp)
                     ) {
                         Column {
                             Row(
@@ -415,11 +391,11 @@ fun DashboardScreen(
                                         text = translate("Today's Collection", isHindi),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color.White.copy(alpha = 0.9f)
+                                        color = Color.White.copy(alpha = 0.95f)
                                     )
                                 }
                                 Surface(
-                                    color = Color.White.copy(alpha = 0.18f),
+                                    color = Color(0xFF00388A).copy(alpha = 0.7f),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Row(
@@ -446,12 +422,12 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "₹${metrics.todayCollection}",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Black,
+                                fontSize = 34.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
                             HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
                             Spacer(modifier = Modifier.height(12.dp))
 
@@ -464,7 +440,7 @@ fun DashboardScreen(
                                     Text(
                                         text = translate("This Month", isHindi),
                                         fontSize = 11.sp,
-                                        color = Color.White.copy(alpha = 0.85f),
+                                        color = Color(0xFFC2D6F5),
                                         fontWeight = FontWeight.Medium
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
@@ -487,7 +463,7 @@ fun DashboardScreen(
                                     Text(
                                         text = translate("Expenses >", isHindi),
                                         fontSize = 11.sp,
-                                        color = Color.White.copy(alpha = 0.85f),
+                                        color = Color(0xFFC2D6F5),
                                         fontWeight = FontWeight.Medium
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
@@ -510,7 +486,7 @@ fun DashboardScreen(
                                     Text(
                                         text = translate("Pending Dues >", isHindi),
                                         fontSize = 11.sp,
-                                        color = Color.White.copy(alpha = 0.85f),
+                                        color = Color(0xFFC2D6F5),
                                         fontWeight = FontWeight.Medium
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
@@ -518,7 +494,7 @@ fun DashboardScreen(
                                         text = "₹${metrics.pendingDues}",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFFBBF24) // Gold/Yellow
+                                        color = Color(0xFFFBBF24) // Yellow/Gold
                                     )
                                 }
                             }
@@ -527,24 +503,26 @@ fun DashboardScreen(
                 }
             }
 
-            // Library Overview (2x2 Grid)
+            // Library Overview (2x2 Grid with two-tone section indicator)
             item {
                 Spacer(modifier = Modifier.height(18.dp))
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .width(4.dp)
-                                .height(16.dp)
+                                .height(14.dp)
                                 .clip(RoundedCornerShape(2.dp))
-                                .background(Color(0xFFD49B35)) // Gold accent pill
-                        )
+                        ) {
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFF0747A6)))
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF59E0B)))
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = translate("Library Overview", isHindi),
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF0F172A)
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF06193E)
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -561,8 +539,8 @@ fun DashboardScreen(
                                 if (metrics.activeStudentsCount >= 20) "⚠️ Limit Reached" else "${20 - metrics.activeStudentsCount} slots left"
                             } else "Total enrolled",
                             icon = Icons.Default.People,
-                            iconBgColor = Color(0xFFEFF6FF),
-                            iconTintColor = Color(0xFF0066FF),
+                            iconBgColor = Color(0xFFDCEBFF),
+                            iconTintColor = Color(0xFF0747A6),
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 if (isFreePlan && metrics.activeStudentsCount >= 20) {
@@ -578,8 +556,8 @@ fun DashboardScreen(
                             value = "${metrics.presentTodayCount}",
                             subtitle = "${metrics.absentTodayCount} Absent",
                             icon = Icons.Default.CheckCircle,
-                            iconBgColor = Color(0xFFDCFCE7),
-                            iconTintColor = Color(0xFF16A34A),
+                            iconBgColor = Color(0xFFDEF7EC),
+                            iconTintColor = Color(0xFF0E9F6E),
                             modifier = Modifier.weight(1f),
                             onClick = onNavigateToAttendance
                         )
@@ -596,8 +574,8 @@ fun DashboardScreen(
                             value = "${metrics.occupiedSeatsCount}/${metrics.totalSeatsCount}",
                             subtitle = "${metrics.availableSeatsCount} seats available",
                             icon = Icons.Default.Chair,
-                            iconBgColor = Color(0xFFE0F2FE),
-                            iconTintColor = Color(0xFF0284C7),
+                            iconBgColor = Color(0xFFDCEBFF),
+                            iconTintColor = Color(0xFF0747A6),
                             modifier = Modifier.weight(1f),
                             onClick = onNavigateToSeats
                         )
@@ -607,8 +585,8 @@ fun DashboardScreen(
                             value = "₹${metrics.pendingDues}",
                             subtitle = "${metrics.expiringCount} students pending",
                             icon = Icons.Default.AttachMoney,
-                            iconBgColor = Color(0xFFFEE2E2),
-                            iconTintColor = DangerRed,
+                            iconBgColor = Color(0xFFFCE8E6),
+                            iconTintColor = Color(0xFFE02424),
                             modifier = Modifier.weight(1f),
                             onClick = onNavigateToStudents
                         )
@@ -621,19 +599,21 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .width(4.dp)
-                                .height(16.dp)
+                                .height(14.dp)
                                 .clip(RoundedCornerShape(2.dp))
-                                .background(Color(0xFFD49B35))
-                        )
+                        ) {
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFF0747A6)))
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF59E0B)))
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = translate("Quick Actions", isHindi),
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF0F172A)
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF06193E)
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -645,7 +625,7 @@ fun DashboardScreen(
                         QuickActionCard(
                             title = "Students",
                             icon = Icons.Default.People,
-                            color = Color(0xFF0066FF),
+                            color = Color(0xFF0747A6),
                             onClick = onNavigateToStudents,
                             modifier = Modifier.weight(1f)
                         )
@@ -659,7 +639,7 @@ fun DashboardScreen(
                         QuickActionCard(
                             title = "Public QR",
                             icon = Icons.Default.QrCodeScanner,
-                            color = Color(0xFF0284C7),
+                            color = Color(0xFF0747A6),
                             onClick = { viewModel.showQrDialog(true) },
                             modifier = Modifier.weight(1f)
                         )
@@ -677,26 +657,28 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .width(4.dp)
-                                    .height(16.dp)
+                                    .height(14.dp)
                                     .clip(RoundedCornerShape(2.dp))
-                                    .background(Color(0xFFD49B35))
-                            )
+                            ) {
+                                Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFF0747A6)))
+                                Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF59E0B)))
+                            }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Recent Students",
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF0F172A)
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF06193E)
                             )
                         }
                         Text(
                             text = "View All (${students.size}) >",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0066FF),
+                            color = Color(0xFF0747A6),
                             modifier = Modifier.clickable { onNavigateToStudents() }
                         )
                     }
@@ -710,9 +692,9 @@ fun DashboardScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .clickable { viewModel.selectStudentForDetail(student) },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = PureWhite),
-                    border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                    border = BorderStroke(1.dp, Color(0xFFE8EEF5)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
@@ -730,14 +712,14 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .size(44.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFEFF6FF)),
+                                    .background(Color(0xFFE1EFFF)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = student.fullName.take(2).uppercase(),
-                                    fontWeight = FontWeight.Black,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    color = Color(0xFF0066FF)
+                                    color = Color(0xFF0747A6)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
@@ -746,13 +728,13 @@ fun DashboardScreen(
                                     text = student.fullName,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F172A)
+                                    color = Color(0xFF0A1931)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "${student.studentCode} • ${student.assignedShiftName}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF64748B)
+                                    color = Color(0xFF6B7280)
                                 )
                             }
                         }
@@ -760,15 +742,15 @@ fun DashboardScreen(
                         Column(horizontalAlignment = Alignment.End) {
                             if (student.assignedSeatNumber.isNotBlank()) {
                                 Surface(
-                                    color = Color(0xFFEFF6FF),
+                                    color = Color(0xFFE8F4FD),
                                     shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(0.8.dp, Color(0xFF93C5FD))
+                                    border = BorderStroke(1.dp, Color(0xFFD0E8FC))
                                 ) {
                                     Text(
                                         text = "Seat ${student.assignedSeatNumber}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0066FF),
+                                        color = Color(0xFF0747A6),
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                     )
                                 }

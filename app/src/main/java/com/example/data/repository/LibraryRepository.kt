@@ -187,8 +187,12 @@ class LibraryRepository(
         val isEmail = viaEmail || identifier.contains("@")
         if (isEmail) {
             val email = identifier.trim()
-            com.example.data.auth.FirebaseAuthService.sendPasswordResetEmail(email) { success, msg ->
-                android.util.Log.d("LibraryRepository", "Firebase email result for $email: $success, $msg")
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                com.example.data.auth.EmailSenderService.sendOtpEmail(
+                    recipientEmail = email,
+                    otpCode = randomOtp,
+                    ownerName = "Library Owner"
+                )
             }
         }
         addAuditLog("OTP Dispatched", "Auth", "One-time code sent to $identifier via ${if (isEmail) "Email" else "SMS"}")
@@ -290,8 +294,12 @@ class LibraryRepository(
         )
 
         if (isEmail && account.ownerProfile.email.isNotBlank()) {
-            com.example.data.auth.FirebaseAuthService.sendPasswordResetEmail(account.ownerProfile.email) { success, msg ->
-                android.util.Log.d("LibraryRepository", "Firebase password reset email result: $success, $msg")
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                com.example.data.auth.EmailSenderService.sendOtpEmail(
+                    recipientEmail = account.ownerProfile.email,
+                    otpCode = otp,
+                    ownerName = account.ownerProfile.fullName
+                )
             }
         }
 

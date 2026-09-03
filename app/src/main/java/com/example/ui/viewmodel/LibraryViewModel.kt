@@ -905,7 +905,11 @@ class LibraryViewModel(
 
     fun sendOtp(identifier: String, viaEmail: Boolean = false): String {
         val otp = repository.sendOtp(identifier, viaEmail)
-        _uiToastMessage.value = "OTP sent to $identifier: $otp"
+        _uiToastMessage.value = if (viaEmail || identifier.contains("@")) {
+            "✅ Verification code sent to your email. Please check your inbox."
+        } else {
+            "✅ Verification code sent via SMS. Please check your messages."
+        }
         return otp
     }
 
@@ -928,7 +932,11 @@ class LibraryViewModel(
 
     fun sendPasswordResetOtp(identifier: String, preferEmail: Boolean = false): Triple<Boolean, String, String> {
         val res = repository.sendPasswordResetOtp(identifier, preferEmail)
-        _uiToastMessage.value = res.second
+        _uiToastMessage.value = if (res.first) {
+            "✅ Verification code dispatched to your email. Please check your inbox."
+        } else {
+            res.second
+        }
         return res
     }
 

@@ -498,9 +498,9 @@ fun LoginScreen(
                                                 if (loginPhoneOrEmail.isBlank()) {
                                                     validationError = "Please enter your Phone Number or Email first."
                                                 } else {
-                                                    val generatedCode = viewModel.sendOtp(loginPhoneOrEmail, isEmailInput)
+                                                    viewModel.sendOtp(loginPhoneOrEmail, isEmailInput)
                                                     isOtpSent = true
-                                                    otpMessageBanner = "Verification code sent to $loginPhoneOrEmail: $generatedCode"
+                                                    otpMessageBanner = if (isEmailInput) "A verification code has been dispatched to your email ($loginPhoneOrEmail). Please check your inbox." else "A verification code has been sent via SMS to $loginPhoneOrEmail."
                                                 }
                                             },
                                             modifier = Modifier
@@ -518,43 +518,31 @@ fun LoginScreen(
                                             Text(if (isEmailInput) "Get Email OTP (via Firebase)" else "Get Verification OTP", fontWeight = FontWeight.Bold)
                                         }
                                     } else {
-                                        // OTP Banner notification
+                                        // OTP Banner notification (No on-screen code!)
                                         Surface(
-                                            color = Color(0xFFECFDF5),
+                                            color = Color(0xFFEFF6FF),
                                             shape = RoundedCornerShape(12.dp),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.4f)),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.4f)),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Row(
                                                 modifier = Modifier.padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
+                                                Icon(Icons.Default.MarkEmailRead, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                                                Spacer(modifier = Modifier.width(10.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
                                                         text = if (isEmailInput) "Email OTP Dispatched" else "SMS OTP Dispatched",
                                                         fontWeight = FontWeight.Bold,
                                                         fontSize = 12.sp,
-                                                        color = Color(0xFF065F46)
+                                                        color = Color(0xFF1E3A8A)
                                                     )
                                                     Text(
-                                                        text = otpMessageBanner ?: "OTP sent to $loginPhoneOrEmail",
+                                                        text = otpMessageBanner ?: "Please check your inbox at $loginPhoneOrEmail (including Spam folder).",
                                                         fontSize = 11.sp,
-                                                        color = Color(0xFF047857)
+                                                        color = Color(0xFF1E40AF)
                                                     )
-                                                }
-
-                                                if (lastGeneratedOtp != null) {
-                                                    Button(
-                                                        onClick = {
-                                                            enteredOtp = lastGeneratedOtp ?: ""
-                                                        },
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                                    ) {
-                                                        Text("Auto-fill", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PureWhite)
-                                                    }
                                                 }
                                             }
                                         }
@@ -1753,31 +1741,36 @@ fun ForgotPasswordDialog(
                     }
 
                     2 -> {
-                        generatedOtpBanner?.let { banner ->
-                            Surface(
-                                color = Color(0xFFECFDF5),
-                                shape = RoundedCornerShape(10.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.5f)),
-                                modifier = Modifier.fillMaxWidth()
+                        Surface(
+                            color = Color(0xFFEFF6FF),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
+                                Icon(Icons.Default.MarkEmailRead, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(22.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
                                     Text(
-                                        text = "Verification Code Dispatched",
+                                        text = "OTP Sent to Your Email!",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF065F46)
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF1E3A8A)
                                     )
                                     Text(
-                                        text = banner,
+                                        text = "We have dispatched a 6-digit verification code to $destinationDisplay. Please check your inbox (and Spam folder) and enter the code below.",
                                         fontSize = 11.sp,
-                                        color = Color(0xFF047857)
+                                        color = Color(0xFF1E40AF)
                                     )
                                 }
                             }
                         }
 
                         Text(
-                            "Enter the 6-digit code sent to $destinationDisplay:",
+                            "Enter the 6-digit code received on your email:",
                             fontSize = 12.sp,
                             color = WarmTextDark
                         )
@@ -1807,15 +1800,15 @@ fun ForgotPasswordDialog(
                         ) {
                             TextButton(
                                 onClick = {
-                                    val (success, msg, code) = viewModel.sendPasswordResetOtp(identifier, preferEmail)
+                                    val (success, msg, _) = viewModel.sendPasswordResetOtp(identifier, preferEmail)
                                     if (success) {
-                                        generatedOtpBanner = "New code: $code sent to $destinationDisplay"
+                                        errorMessage = null
                                     } else {
                                         errorMessage = msg
                                     }
                                 }
                             ) {
-                                Text("Resend Code", fontSize = 11.sp, color = OrangePrimaryDark, fontWeight = FontWeight.Bold)
+                                Text("Resend Code to Email", fontSize = 11.sp, color = OrangePrimaryDark, fontWeight = FontWeight.Bold)
                             }
 
                             Text("Valid for 10 mins", fontSize = 10.sp, color = WarmTextMuted)
@@ -1889,10 +1882,9 @@ fun ForgotPasswordDialog(
                                 errorMessage = "Please enter your registered phone number or email."
                                 return@Button
                             }
-                            val (success, msg, code) = viewModel.sendPasswordResetOtp(identifier, preferEmail)
+                            val (success, msg, _) = viewModel.sendPasswordResetOtp(identifier, preferEmail)
                             if (success) {
                                 destinationDisplay = if (preferEmail && identifier.contains("@")) identifier else "your registered contact"
-                                generatedOtpBanner = "Verification code: $code"
                                 step = 2
                                 errorMessage = null
                             } else {

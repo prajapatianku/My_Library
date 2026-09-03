@@ -87,27 +87,26 @@ fun DashboardScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Left spacer matching bell size to ensure perfectly centered logo
-                    Spacer(modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.size(36.dp))
 
                     // Center: Official Vidyara Header Logo Lockup
                     Image(
                         painter = painterResource(id = R.drawable.ic_vidyara_header_logo),
                         contentDescription = "Vidyara",
                         modifier = Modifier
-                            .height(26.dp)
-                            .wrapContentWidth()
+                            .height(34.dp)
+                            .width(128.dp)
                     )
 
                     // Right: Notification Bell in Navy with royal blue notification dot
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .clickable { showNotificationCenter = true },
                         contentAlignment = Alignment.Center
@@ -121,7 +120,7 @@ fun DashboardScreen(
                         if (unreadNotificationsCount > 0) {
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(9.dp)
                                     .align(Alignment.TopEnd)
                                     .clip(CircleShape)
                                     .background(Color(0xFF0066FF))

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "621345034559",
+    "project_id": "vidyara-ff3a7",
+    "storage_bucket": "vidyara-ff3a7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:621345034559:android:4165c0124525403521838a",
+        "android_client_info": {
+          "package_name": "com.aistudio.mylibrary.rxzqpk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARdF3FlRm9jlbSPiPxPIwrjDhmrHiDjBs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

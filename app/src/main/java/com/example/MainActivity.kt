@@ -38,7 +38,7 @@ enum class MainNavigationTab(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    DASHBOARD("Home", Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
+    DASHBOARD("Home", Icons.Filled.GridView, Icons.Outlined.GridView),
     STUDENTS("Students", Icons.Filled.People, Icons.Outlined.People),
     ATTENDANCE("Check-In", Icons.Filled.AssignmentTurnedIn, Icons.Outlined.AssignmentTurnedIn),
     SEAT_MAP("Seats", Icons.Filled.Chair, Icons.Outlined.Chair),
@@ -423,11 +423,11 @@ fun MainApp(
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = OrangePrimaryDark,
-                                selectedTextColor = OrangePrimaryDark,
-                                indicatorColor = OrangePrimaryContainer,
-                                unselectedIconColor = WarmTextMuted,
-                                unselectedTextColor = WarmTextMuted
+                                selectedIconColor = Color(0xFF0066FF),
+                                selectedTextColor = Color(0xFF0066FF),
+                                indicatorColor = Color(0xFFEFF6FF),
+                                unselectedIconColor = Color(0xFF64748B),
+                                unselectedTextColor = Color(0xFF64748B)
                             )
                         )
                     }

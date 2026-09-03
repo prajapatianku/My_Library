@@ -238,8 +238,8 @@ fun SuperAdminScreen(
     if (showCreateBroadcastDialog) {
         CreateBroadcastModal(
             onDismiss = { showCreateBroadcastDialog = false },
-            onSend = { title, msg, audience ->
-                viewModel.platformRepository.sendBroadcast(title, msg, audience)
+            onSend = { title, msg, audience, expiryDays ->
+                viewModel.platformRepository.sendBroadcast(title, msg, audience, expiryDays = expiryDays)
                 showCreateBroadcastDialog = false
             }
         )
@@ -250,8 +250,8 @@ fun SuperAdminScreen(
         EditBroadcastModal(
             broadcast = bc,
             onDismiss = { editingBroadcast = null },
-            onUpdate = { title, msg, audience ->
-                viewModel.platformRepository.updateBroadcast(bc.id, title, msg, audience)
+            onUpdate = { title, msg, audience, expiryDays ->
+                viewModel.platformRepository.updateBroadcast(bc.id, title, msg, audience, expiryDays = expiryDays)
                 editingBroadcast = null
             }
         )
@@ -1522,11 +1522,12 @@ fun CreateCouponModal(
 @Composable
 fun CreateBroadcastModal(
     onDismiss: () -> Unit,
-    onSend: (String, String, String) -> Unit
+    onSend: (String, String, String, Int) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var audience by remember { mutableStateOf("ALL") }
+    var expiryDays by remember { mutableStateOf(7) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -1574,6 +1575,20 @@ fun CreateBroadcastModal(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text("Display Duration (Days to show to user):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(1 to "1d", 3 to "3d", 7 to "7d", 15 to "15d", 30 to "30d", 0 to "Always").forEach { (d, lbl) ->
+                        FilterChip(
+                            selected = expiryDays == d,
+                            onClick = { expiryDays = d },
+                            label = { Text(lbl, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1581,7 +1596,7 @@ fun CreateBroadcastModal(
                         Text("Cancel")
                     }
                     Button(
-                        onClick = { onSend(title, message, audience) },
+                        onClick = { onSend(title, message, audience, expiryDays) },
                         modifier = Modifier.weight(1.5f),
                         enabled = title.isNotBlank() && message.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
@@ -1598,11 +1613,12 @@ fun CreateBroadcastModal(
 fun EditBroadcastModal(
     broadcast: PlatformBroadcast,
     onDismiss: () -> Unit,
-    onUpdate: (String, String, String) -> Unit
+    onUpdate: (String, String, String, Int) -> Unit
 ) {
     var title by remember { mutableStateOf(broadcast.title) }
     var message by remember { mutableStateOf(broadcast.message) }
     var audience by remember { mutableStateOf(broadcast.targetAudience) }
+    var expiryDays by remember { mutableStateOf(broadcast.expiryDays) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -1650,6 +1666,20 @@ fun EditBroadcastModal(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text("Display Duration (Days to show to user):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(1 to "1d", 3 to "3d", 7 to "7d", 15 to "15d", 30 to "30d", 0 to "Always").forEach { (d, lbl) ->
+                        FilterChip(
+                            selected = expiryDays == d,
+                            onClick = { expiryDays = d },
+                            label = { Text(lbl, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1657,7 +1687,7 @@ fun EditBroadcastModal(
                         Text("Cancel")
                     }
                     Button(
-                        onClick = { onUpdate(title, message, audience) },
+                        onClick = { onUpdate(title, message, audience, expiryDays) },
                         modifier = Modifier.weight(1.5f),
                         enabled = title.isNotBlank() && message.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)

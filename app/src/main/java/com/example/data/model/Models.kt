@@ -359,7 +359,9 @@ data class PlatformBroadcast(
     val timestamp: String,
     val scheduledFor: String? = null,
     val isSent: Boolean = true,
-    val actionUrl: String? = null
+    val actionUrl: String? = null,
+    val expiryDays: Int = 7, // Duration in days to show broadcast (0 = never expires)
+    val expiresAt: Long = 0L // Epoch millis when broadcast expires (0 = no expiry)
 )
 
 data class PlatformAppControl(

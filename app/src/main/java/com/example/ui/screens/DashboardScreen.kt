@@ -1,11 +1,12 @@
 package com.example.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,10 +20,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.StudentStatus
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.R
+import com.example.data.model.PlatformBroadcast
+import com.example.data.model.SaaSPlanType
 import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.LibraryViewModel
@@ -56,147 +64,247 @@ fun DashboardScreen(
     val appControl by viewModel.platformAppControl.collectAsState()
     val broadcasts by viewModel.platformBroadcasts.collectAsState()
     val dismissedBroadcasts by viewModel.platformRepository.dismissedBroadcastIds.collectAsState()
-    val isSubExpired = daysRemaining == 0 && saasPlan.planType != com.example.data.model.SaaSPlanType.FREE
+    val isSubExpired = daysRemaining == 0 && saasPlan.planType != SaaSPlanType.FREE
     val activeBroadcast = remember(broadcasts, saasPlan, isSubExpired, dismissedBroadcasts) {
         viewModel.platformRepository.getActiveBroadcastForOwner(saasPlan.planType, isSubExpired)
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SlateBackground),
-        contentPadding = PaddingValues(bottom = 100.dp)
-    ) {
-        // Platform Maintenance Banner
-        if (appControl.maintenanceMode) {
+    var showNotificationCenter by remember { mutableStateOf(false) }
+    val pendingDuesStudents = remember(students) { students.filter { it.dueAmount > 0 } }
+    val pendingRegistrationRequests = remember(requests) { requests.filter { it.status == "pending" } }
+    val unreadNotificationsCount = (if (activeBroadcast != null) 1 else 0) +
+            pendingDuesStudents.size +
+            (if (daysRemaining in 0..7) 1 else 0) +
+            pendingRegistrationRequests.size
+
+    Box(modifier = modifier.fillMaxSize().background(Color(0xFFF8FAFC))) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
+            // Top App Bar with Centered Logo & Notification Bell
             item {
                 Surface(
-                    color = Color(0xFFFEF3C7),
-                    modifier = Modifier.fillMaxWidth()
+                    color = PureWhite,
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 1.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Engineering, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "SYSTEM NOTICE: ${appControl.maintenanceMessage}",
-                            color = Color(0xFF92400E),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        // Active Platform Super Admin Broadcast Announcement
-        activeBroadcast?.let { bc ->
-            item {
-                Surface(
-                    color = NavyPrimary,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Campaign, contentDescription = null, tint = AmberTertiary, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = bc.title,
-                                color = AmberTertiary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = bc.message,
-                                color = PureWhite,
-                                fontSize = 11.sp
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                viewModel.platformRepository.dismissBroadcast(bc.id + "_" + bc.timestamp)
-                            },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close announcement",
-                                tint = PureWhite.copy(alpha = 0.8f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        if (daysRemaining in 0..7) {
-            item {
-                Surface(
-                    color = DangerRed,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.requestUpgrade("general") }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Warning",
-                            tint = PureWhite,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Your subscription expires in $daysRemaining days! Tap here to renew now.",
-                            color = PureWhite,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        // Top App Header
-        item {
-            Surface(
-                color = PureWhite,
-                modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(0.dp, Color.Transparent),
-                shadowElevation = 1.dp
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(modifier = Modifier.width(36.dp))
+
+                        // Center: Vidyara Badge and Brand Text
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_vidyara_badge),
+                                contentDescription = "Vidyara Logo",
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Vidyara",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF0C2146),
+                                letterSpacing = (-0.5).sp
+                            )
+                        }
+
+                        // Right: Notification Bell with Badge
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .clickable { showNotificationCenter = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Notifications,
+                                contentDescription = "Notifications",
+                                tint = Color(0xFF0066FF),
+                                modifier = Modifier.size(26.dp)
+                            )
+                            if (unreadNotificationsCount > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .size(8.dp)
+                                        .size(18.dp)
+                                        .align(Alignment.TopEnd)
                                         .clip(CircleShape)
-                                        .background(OrangePrimary)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                        .background(DangerRed),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (unreadNotificationsCount > 9) "9+" else "$unreadNotificationsCount",
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Platform Maintenance Banner (if active)
+            if (appControl.maintenanceMode) {
+                item {
+                    Surface(
+                        color = Color(0xFFFEF3C7),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Engineering, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "SYSTEM NOTICE: ${appControl.maintenanceMessage}",
+                                color = Color(0xFF92400E),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Active Platform Broadcast Announcement Banner
+            activeBroadcast?.let { bc ->
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A2D6E)), // Deep Royal Navy
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Campaign,
+                                contentDescription = "Broadcast",
+                                tint = Color(0xFFFBBF24), // Gold/Amber
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Welcome, ${owner.fullName.split(" ").firstOrNull() ?: "Owner"}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = WarmTextDark
+                                    text = bc.title,
+                                    color = Color(0xFFFBBF24),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = bc.message,
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp
                                 )
                             }
+                            IconButton(
+                                onClick = {
+                                    viewModel.platformRepository.dismissBroadcast(bc.id + "_" + bc.timestamp)
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Subscription Expiry Alert
+            if (daysRemaining in 0..7) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = DangerRed,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .clickable { viewModel.requestUpgrade("general") }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Warning",
+                                tint = PureWhite,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Your subscription expires in $daysRemaining days! Tap here to renew.",
+                                color = PureWhite,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Owner Profile & Branch Dropdown Header
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEFF6FF)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color(0xFF0066FF),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Welcome, ${owner.fullName.split(" ").firstOrNull() ?: "Owner"}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF0F172A)
+                            )
                             Spacer(modifier = Modifier.height(2.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -208,567 +316,885 @@ fun DashboardScreen(
                                 Icon(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = null,
-                                    tint = OrangePrimary,
-                                    modifier = Modifier.size(15.dp)
+                                    tint = Color(0xFF0066FF),
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = activeBranch?.name ?: library.name,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = WarmTextMuted,
-                                    fontWeight = FontWeight.Medium
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF475569),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
-                                if (branches.size > 1 || !viewModel.hasFeature("multi_branch")) {
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "Switch branch",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = OrangePrimary
-                                    )
-                                }
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0066FF),
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
-
-                        // SaaS Plan Badge
-                        PlanBadge(
-                            planType = saasPlan.planType,
-                            onClick = { viewModel.requestUpgrade("view_plans") }
-                        )
                     }
-                }
-            }
-        }
 
-        // Hero KPI Financial Banner (Vibrant Sunset Orange & White Accents)
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                shape = RoundedCornerShape(22.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(HeroBannerGradient)
-                        .padding(20.dp)
-                ) {
-                    Column {
+                    // Plan Badge (★ Premium)
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = PureWhite,
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        modifier = Modifier
+                            .clickable { viewModel.requestUpgrade("view_plans") }
+                            .padding(start = 8.dp)
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountBalanceWallet,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                 Text(
-                                    text = translate("Today's Collection", isHindi),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                            Surface(
-                                color = Color.White.copy(alpha = 0.25f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "LIVE",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "₹${metrics.todayCollection}",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(text = translate("This Month", isHindi), fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "₹${metrics.monthlyCollection}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                            Column(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onNavigateToExpenses() }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text(text = translate("Expenses ↗", isHindi), fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "₹${metrics.totalExpenses}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFE4E6))
-                            }
-                            Column(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onNavigateToStudents() }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text(text = translate("Pending Dues ↗", isHindi), fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "₹${metrics.pendingDues}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFEF08A))
-                            }
+                            Text(
+                                text = "★",
+                                color = Color(0xFF0066FF),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = when (saasPlan.planType) {
+                                    SaaSPlanType.FREE -> "Free Plan"
+                                    SaaSPlanType.PREMIUM -> "Premium"
+                                    SaaSPlanType.BUSINESS -> "Business"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
                         }
                     }
                 }
             }
-        }
 
-        // Live Operational KPI Cards (Grid)
-        item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    text = translate("Library Overview", isHindi),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = WarmTextDark
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    val isFreePlan = saasPlan.planType == com.example.data.model.SaaSPlanType.FREE
-                    KpiMetricCard(
-                        title = translate("Active Students", isHindi),
-                        value = if (isFreePlan) "${metrics.activeStudentsCount}/20" else "${metrics.activeStudentsCount}",
-                        subtitle = if (isFreePlan) {
-                            if (metrics.activeStudentsCount >= 20) "⚠️ Limit Reached (Free)" else "${20 - metrics.activeStudentsCount} slots remaining"
-                        } else "Total enrolled",
-                        icon = Icons.Default.People,
-                        iconBgColor = if (isFreePlan && metrics.activeStudentsCount >= 20) Color(0xFFFEE2E2) else OrangePrimaryContainer,
-                        iconTintColor = if (isFreePlan && metrics.activeStudentsCount >= 20) DangerRed else OrangePrimary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (isFreePlan && metrics.activeStudentsCount >= 20) {
-                                viewModel.requestUpgrade("student_limit_20")
-                            } else {
-                                onNavigateToStudents()
-                            }
-                        }
-                    )
-
-                    KpiMetricCard(
-                        title = translate("Present Today", isHindi),
-                        value = "${metrics.presentTodayCount}",
-                        subtitle = "${metrics.absentTodayCount} Absent",
-                        icon = Icons.Default.CheckCircle,
-                        iconBgColor = Color(0xFFDCFCE7),
-                        iconTintColor = Color(0xFF16A34A),
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToAttendance
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    KpiMetricCard(
-                        title = translate("Seats Occupancy", isHindi),
-                        value = "${metrics.occupiedSeatsCount}/${metrics.totalSeatsCount}",
-                        subtitle = "${metrics.availableSeatsCount} seats available",
-                        icon = Icons.Default.Chair,
-                        iconBgColor = WarmPeachSecondaryContainer,
-                        iconTintColor = OrangePrimaryDark,
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToSeats
-                    )
-
-                    KpiMetricCard(
-                        title = translate("Fee Dues", isHindi),
-                        value = "₹${metrics.pendingDues}",
-                        subtitle = "${metrics.expiringCount} students pending",
-                        icon = Icons.Default.AttachMoney,
-                        iconBgColor = Color(0xFFFEE2E2),
-                        iconTintColor = DangerRed,
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToStudents
-                    )
-                }
-            }
-        }
-
-        // Quick Actions Section
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    text = translate("Quick Actions", isHindi),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = WarmTextDark
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Quick Actions: Students, Seats, Public QR
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    QuickActionCard(
-                        title = "Students",
-                        icon = Icons.Default.People,
-                        color = OrangePrimary,
-                        onClick = onNavigateToStudents,
-                        modifier = Modifier.weight(1f)
-                    )
-                    QuickActionCard(
-                        title = "Seats",
-                        icon = Icons.Default.Chair,
-                        color = Color(0xFFF59E0B),
-                        onClick = onNavigateToSeats,
-                        modifier = Modifier.weight(1f)
-                    )
-                    QuickActionCard(
-                        title = "Public QR",
-                        icon = Icons.Default.QrCode2,
-                        color = Color(0xFF0284C7),
-                        onClick = { viewModel.showQrDialog(true) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        // Action Required Banner (Pending Requests / Expiring Dues / WhatsApp Fee Alerts)
-        if (metrics.pendingRequestsCount > 0 || metrics.pendingDues > 0) {
+            // Hero Collection Card (Royal Blue Gradient)
             item {
-                Spacer(modifier = Modifier.height(20.dp))
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(
-                        text = "Action Required",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = WarmTextDark
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // WhatsApp Fee Due Notification Banner
-                    if (metrics.pendingDues > 0) {
-                        val isWhatsAppUnlocked = viewModel.hasFeature("whatsapp_fee_reminders")
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = PureWhite),
-                            border = BorderStroke(1.5.dp, Color(0xFF25D366).copy(alpha = 0.6f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(38.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFFE8F8EE)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Chat,
-                                                contentDescription = "WhatsApp",
-                                                tint = Color(0xFF128C7E),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    text = "WhatsApp Fee Due Alerts",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = WarmTextDark
-                                                )
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Surface(
-                                                    shape = RoundedCornerShape(4.dp),
-                                                    color = if (isWhatsAppUnlocked) Color(0xFFE8F8EE) else Color(0xFFFFF7ED)
-                                                ) {
-                                                    Text(
-                                                        text = if (isWhatsAppUnlocked) "2nd/3rd Plan" else "Plan 2 & 3",
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = if (isWhatsAppUnlocked) Color(0xFF128C7E) else OrangePrimaryDark,
-                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                                    )
-                                                }
-                                            }
-                                            Text(
-                                                text = "${students.count { it.dueAmount > 0 }} students have fee dues today (₹${metrics.pendingDues} pending)",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = WarmTextMuted
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedButton(
-                                        onClick = { viewModel.showWhatsAppReminderDialog(true) },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(vertical = 6.dp),
-                                        border = BorderStroke(1.dp, Color(0xFFE5DECE))
-                                    ) {
-                                        Icon(imageVector = Icons.Default.FormatListBulleted, contentDescription = null, modifier = Modifier.size(14.dp), tint = WarmTextDark)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("View Dues", fontSize = 12.sp, color = WarmTextDark)
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            if (!isWhatsAppUnlocked) {
-                                                viewModel.requestUpgrade("whatsapp_fee_reminders")
-                                            } else {
-                                                viewModel.sendOwnerWhatsAppAlert(context)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1.3f),
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(vertical = 6.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF128C7E))
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(14.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(if (isWhatsAppUnlocked) "Notify Owner" else "Unlock Alerts", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (metrics.pendingRequestsCount > 0) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = OrangePrimaryContainer),
-                            border = BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.3f))
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color(0xFF0052CC), // Royal Blue
+                                        Color(0xFF072B6B)  // Dark Blue
+                                    )
+                                )
+                            )
+                            .padding(20.dp)
+                    ) {
+                        Column {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, tint = OrangePrimary)
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "${metrics.pendingRequestsCount} Student Registration Requests",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = WarmTextDark
+                                    Icon(
+                                        imageVector = Icons.Default.AccountBalanceWallet,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = translate("Today's Collection", isHindi),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White.copy(alpha = 0.9f)
+                                    )
+                                }
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.18f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF10B981)) // Glowing Green
                                         )
+                                        Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "Students registered via public QR waiting for approval",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = WarmTextMuted
+                                            text = "LIVE",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.White
                                         )
                                     }
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "₹${metrics.todayCollection}",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = translate("This Month", isHindi),
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "₹${metrics.monthlyCollection}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.White.copy(alpha = 0.2f)))
+
+                                Column(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onNavigateToExpenses() }
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = translate("Expenses >", isHindi),
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "₹${metrics.totalExpenses}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.White.copy(alpha = 0.2f)))
+
+                                Column(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onNavigateToStudents() }
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = translate("Pending Dues >", isHindi),
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "₹${metrics.pendingDues}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFFBBF24) // Gold/Yellow
+                                    )
+                                }
+                            }
                         }
                     }
+                }
+            }
 
-                    // Registration Requests Cards preview
-                    requests.filter { it.status == "pending" }.forEach { req ->
-                        Card(
+            // Library Overview (2x2 Grid)
+            item {
+                Spacer(modifier = Modifier.height(18.dp))
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = PureWhite),
-                            border = BorderStroke(1.dp, Color(0xFFF3ECE4)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                .width(4.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFFD49B35)) // Gold accent pill
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = translate("Library Overview", isHindi),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        val isFreePlan = saasPlan.planType == SaaSPlanType.FREE
+                        KpiMetricCard(
+                            title = translate("Active Students", isHindi),
+                            value = if (isFreePlan) "${metrics.activeStudentsCount}/20" else "${metrics.activeStudentsCount}",
+                            subtitle = if (isFreePlan) {
+                                if (metrics.activeStudentsCount >= 20) "⚠️ Limit Reached" else "${20 - metrics.activeStudentsCount} slots left"
+                            } else "Total enrolled",
+                            icon = Icons.Default.People,
+                            iconBgColor = Color(0xFFEFF6FF),
+                            iconTintColor = Color(0xFF0066FF),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (isFreePlan && metrics.activeStudentsCount >= 20) {
+                                    viewModel.requestUpgrade("student_limit_20")
+                                } else {
+                                    onNavigateToStudents()
+                                }
+                            }
+                        )
+
+                        KpiMetricCard(
+                            title = translate("Present Today", isHindi),
+                            value = "${metrics.presentTodayCount}",
+                            subtitle = "${metrics.absentTodayCount} Absent",
+                            icon = Icons.Default.CheckCircle,
+                            iconBgColor = Color(0xFFDCFCE7),
+                            iconTintColor = Color(0xFF16A34A),
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToAttendance
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        KpiMetricCard(
+                            title = translate("Seats Occupancy", isHindi),
+                            value = "${metrics.occupiedSeatsCount}/${metrics.totalSeatsCount}",
+                            subtitle = "${metrics.availableSeatsCount} seats available",
+                            icon = Icons.Default.Chair,
+                            iconBgColor = Color(0xFFE0F2FE),
+                            iconTintColor = Color(0xFF0284C7),
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToSeats
+                        )
+
+                        KpiMetricCard(
+                            title = translate("Fee Dues", isHindi),
+                            value = "₹${metrics.pendingDues}",
+                            subtitle = "${metrics.expiringCount} students pending",
+                            icon = Icons.Default.AttachMoney,
+                            iconBgColor = Color(0xFFFEE2E2),
+                            iconTintColor = DangerRed,
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToStudents
+                        )
+                    }
+                }
+            }
+
+            // Quick Actions Section
+            item {
+                Spacer(modifier = Modifier.height(20.dp))
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFFD49B35))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = translate("Quick Actions", isHindi),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        QuickActionCard(
+                            title = "Students",
+                            icon = Icons.Default.People,
+                            color = Color(0xFF0066FF),
+                            onClick = onNavigateToStudents,
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickActionCard(
+                            title = "Seats",
+                            icon = Icons.Default.Chair,
+                            color = Color(0xFFF59E0B),
+                            onClick = onNavigateToSeats,
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickActionCard(
+                            title = "Public QR",
+                            icon = Icons.Default.QrCodeScanner,
+                            color = Color(0xFF0284C7),
+                            onClick = { viewModel.showQrDialog(true) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // Recent Students Section
+            item {
+                Spacer(modifier = Modifier.height(20.dp))
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .height(16.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Color(0xFFD49B35))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Recent Students",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF0F172A)
+                            )
+                        }
+                        Text(
+                            text = "View All (${students.size}) >",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0066FF),
+                            modifier = Modifier.clickable { onNavigateToStudents() }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
+
+            items(students.take(5)) { student ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clickable { viewModel.selectStudentForDetail(student) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEFF6FF)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = student.fullName.take(2).uppercase(),
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 15.sp,
+                                    color = Color(0xFF0066FF)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = student.fullName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "${student.studentCode} • ${student.assignedShiftName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                        }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            if (student.assignedSeatNumber.isNotBlank()) {
+                                Surface(
+                                    color = Color(0xFFEFF6FF),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(0.8.dp, Color(0xFF93C5FD))
+                                ) {
+                                    Text(
+                                        text = "Seat ${student.assignedSeatNumber}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0066FF),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                            if (student.dueAmount > 0) {
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = "Due: ₹${student.dueAmount}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DangerRed
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // =====================================================================
+        // NOTIFICATION CENTER MODAL DIALOG
+        // =====================================================================
+        if (showNotificationCenter) {
+            Dialog(
+                onDismissRequest = { showNotificationCenter = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.95f)
+                        .fillMaxHeight(0.85f),
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFFF8FAFC),
+                    shadowElevation = 8.dp
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Modal Header
+                        Surface(
+                            color = PureWhite,
+                            modifier = Modifier.fillMaxWidth(),
+                            shadowElevation = 1.dp
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(14.dp),
+                                    .padding(horizontal = 18.dp, vertical = 14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = req.studentName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = WarmTextDark)
-                                    Text(text = "${req.course} • ${req.requestedShift}", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
-                                    Text(text = "Mobile: ${req.mobile}", style = MaterialTheme.typography.bodySmall, color = WarmTextMuted)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFEFF6FF)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = null,
+                                            tint = Color(0xFF0066FF),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Notification Center",
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color(0xFF0F172A)
+                                        )
+                                        Text(
+                                            text = "$unreadNotificationsCount active item${if (unreadNotificationsCount != 1) "s" else ""}",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF64748B)
+                                        )
+                                    }
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    FilledTonalButton(
-                                        onClick = { viewModel.rejectRequest(req.id) },
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFFFEE2E2), contentColor = DangerRed)
-                                    ) {
-                                        Text("Reject", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    Button(
-                                        onClick = { viewModel.approveRequest(req.id) },
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                                    ) {
-                                        Text("Approve", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
+
+                                IconButton(onClick = { showNotificationCenter = false }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color(0xFF64748B)
+                                    )
                                 }
                             }
                         }
-                    }
-                }
-            }
-        }
 
-        // Active Students Quick List preview
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Recent Students",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = WarmTextDark
-                    )
-                    Text(
-                        text = "View All (${students.size}) ↗",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = OrangePrimary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onNavigateToStudents() }
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-
-        items(students.take(4)) { student ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .clickable { viewModel.selectStudentForDetail(student) },
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = PureWhite),
-                border = BorderStroke(1.dp, Color(0xFFF3ECE4)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+                        // Notification Items List
+                        LazyColumn(
                             modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(OrangePrimaryContainer),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            contentPadding = PaddingValues(vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = student.fullName.take(2).uppercase(),
-                                fontWeight = FontWeight.Black,
-                                color = OrangePrimary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = student.fullName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = WarmTextDark
-                            )
-                            Text(
-                                text = "${student.studentCode} • ${student.assignedShiftName}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = WarmTextMuted
-                            )
-                        }
-                    }
+                            // Section 1: Super Admin Broadcast Announcements
+                            activeBroadcast?.let { bc ->
+                                item {
+                                    Text(
+                                        text = "📢 Platform Broadcast",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A2D6E))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = bc.title,
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = Color(0xFFFBBF24)
+                                                )
+                                                Surface(
+                                                    color = Color.White.copy(alpha = 0.15f),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = bc.timestamp.take(10),
+                                                        fontSize = 10.sp,
+                                                        color = Color.White,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = bc.message,
+                                                fontSize = 12.sp,
+                                                color = Color.White,
+                                                lineHeight = 17.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        viewModel.platformRepository.dismissBroadcast(bc.id + "_" + bc.timestamp)
+                                                    }
+                                                ) {
+                                                    Text("Dismiss Announcement", color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
-                    Column(horizontalAlignment = Alignment.End) {
-                        if (student.assignedSeatNumber.isNotBlank()) {
-                            Surface(
-                                color = WarmPeachSecondaryContainer,
-                                shape = RoundedCornerShape(6.dp),
-                                border = BorderStroke(0.5.dp, OrangePrimary.copy(alpha = 0.2f))
-                            ) {
-                                Text(
-                                    text = "Seat ${student.assignedSeatNumber}",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = OrangePrimaryDark,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                            // Section 2: Student Fee Due Reminders
+                            if (pendingDuesStudents.isNotEmpty()) {
+                                item {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "💰 Student Fee Due Reminders (${pendingDuesStudents.size})",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                }
+
+                                items(pendingDuesStudents) { student ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = CardDefaults.cardColors(containerColor = PureWhite),
+                                        border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+                                    ) {
+                                        Column(modifier = Modifier.padding(14.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = student.fullName,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 14.sp,
+                                                        color = Color(0xFF0F172A)
+                                                    )
+                                                    Text(
+                                                        text = "Seat ${if (student.assignedSeatNumber.isNotBlank()) student.assignedSeatNumber else "N/A"} • ${student.assignedShiftName}",
+                                                        fontSize = 11.sp,
+                                                        color = Color(0xFF64748B)
+                                                    )
+                                                    if (student.feeDueDate.isNotBlank()) {
+                                                        Text(
+                                                            text = "Due Date: ${student.feeDueDate}",
+                                                            fontSize = 11.sp,
+                                                            color = DangerRed,
+                                                            fontWeight = FontWeight.Medium
+                                                        )
+                                                    }
+                                                }
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text(
+                                                        text = "₹${student.dueAmount}",
+                                                        fontSize = 16.sp,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = DangerRed
+                                                    )
+                                                    Text(
+                                                        text = "PENDING DUE",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = DangerRed
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(10.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        showNotificationCenter = false
+                                                        viewModel.selectStudentForDetail(student)
+                                                        onNavigateToStudents()
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(vertical = 4.dp),
+                                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                                ) {
+                                                    Text("View Profile", fontSize = 11.sp, color = Color(0xFF0F172A))
+                                                }
+
+                                                Button(
+                                                    onClick = {
+                                                        viewModel.sendStudentWhatsAppReminder(context, student)
+                                                    },
+                                                    modifier = Modifier.weight(1.3f),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(vertical = 4.dp),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A))
+                                                ) {
+                                                    Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(12.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("WhatsApp Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Section 3: Subscription & Platform Notices
+                            if (daysRemaining in 0..7) {
+                                item {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "⚡ Subscription Reminder",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                                        border = BorderStroke(1.dp, Color(0xFFFECACA))
+                                    ) {
+                                        Column(modifier = Modifier.padding(14.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Warning, contentDescription = null, tint = DangerRed, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = "Subscription expires in $daysRemaining days",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = DangerRed
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Renew your subscription to avoid any interruption in student bookings, daily attendance, and cloud sync.",
+                                                fontSize = 11.sp,
+                                                color = Color(0xFF7F1D1D)
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Button(
+                                                onClick = {
+                                                    showNotificationCenter = false
+                                                    viewModel.requestUpgrade("general")
+                                                },
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
+                                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                            ) {
+                                                Text("Renew Plan Now", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Section 4: Public QR Registration Requests
+                            if (pendingRegistrationRequests.isNotEmpty()) {
+                                item {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "📋 Pending Registration Requests (${pendingRegistrationRequests.size})",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                }
+
+                                items(pendingRegistrationRequests) { req ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = CardDefaults.cardColors(containerColor = PureWhite),
+                                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(14.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = req.studentName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                                                Text(text = "${req.course} • ${req.requestedShift}", fontSize = 11.sp, color = Color(0xFF64748B))
+                                                Text(text = "Mob: ${req.mobile}", fontSize = 11.sp, color = Color(0xFF64748B))
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                FilledTonalButton(
+                                                    onClick = { viewModel.rejectRequest(req.id) },
+                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFFFEE2E2), contentColor = DangerRed)
+                                                ) {
+                                                    Text("Reject", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                Button(
+                                                    onClick = { viewModel.approveRequest(req.id) },
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0066FF))
+                                                ) {
+                                                    Text("Approve", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Empty State
+                            if (activeBroadcast == null && pendingDuesStudents.isEmpty() && daysRemaining > 7 && pendingRegistrationRequests.isEmpty()) {
+                                item {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 40.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFFEFF6FF)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.NotificationsNone,
+                                                contentDescription = null,
+                                                tint = Color(0xFF0066FF),
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "All Caught Up!",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF0F172A)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "No pending fee dues or unread broadcast announcements.",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF64748B),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
                             }
                         }
-                        if (student.dueAmount > 0) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Due: ₹${student.dueAmount}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DangerRed
-                            )
+
+                        // Bottom Close Action
+                        Surface(
+                            color = PureWhite,
+                            modifier = Modifier.fillMaxWidth(),
+                            shadowElevation = 4.dp
+                        ) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                OutlinedButton(
+                                    onClick = { showNotificationCenter = false },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("Close Notification Center", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                }
+                            }
                         }
                     }
                 }

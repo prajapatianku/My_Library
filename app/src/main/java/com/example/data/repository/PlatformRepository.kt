@@ -353,14 +353,18 @@ class PlatformRepository private constructor(private val context: Context?) {
     // BROADCAST NOTIFICATIONS ENGINE
     // =========================================================================
 
-    fun sendBroadcast(title: String, message: String, targetAudience: String, actionUrl: String? = null): PlatformBroadcast {
+    fun sendBroadcast(title: String, message: String, targetAudience: String, actionUrl: String? = null, expiryDays: Int = 7): PlatformBroadcast {
+        val now = System.currentTimeMillis()
+        val expiresAt = if (expiryDays > 0) now + (expiryDays * 86400000L) else 0L
         val broadcast = PlatformBroadcast(
             title = title.trim(),
             message = message.trim(),
             targetAudience = targetAudience,
             timestamp = dateFormat.format(Date()),
             isSent = true,
-            actionUrl = actionUrl
+            actionUrl = actionUrl,
+            expiryDays = expiryDays,
+            expiresAt = expiresAt
         )
         _broadcasts.value = listOf(broadcast) + _broadcasts.value
         persistBroadcasts()
@@ -372,6 +376,8 @@ class PlatformRepository private constructor(private val context: Context?) {
                     put("message", broadcast.message)
                     put("target_audience", broadcast.targetAudience)
                     put("timestamp", broadcast.timestamp)
+                    put("expiry_days", broadcast.expiryDays)
+                    put("expires_at", broadcast.expiresAt)
                 }.toString())
             } catch (e: Exception) {
                 Log.e("PlatformRepository", "Error syncing broadcast: ${e.message}")
@@ -393,17 +399,22 @@ class PlatformRepository private constructor(private val context: Context?) {
         }
     }
 
-    fun updateBroadcast(id: String, title: String, message: String, targetAudience: String, actionUrl: String? = null): Boolean {
+    fun updateBroadcast(id: String, title: String, message: String, targetAudience: String, actionUrl: String? = null, expiryDays: Int = 7): Boolean {
         val currentList = _broadcasts.value.toMutableList()
         val index = currentList.indexOfFirst { it.id == id }
         if (index == -1) return false
+
+        val now = System.currentTimeMillis()
+        val expiresAt = if (expiryDays > 0) now + (expiryDays * 86400000L) else 0L
 
         val updated = currentList[index].copy(
             title = title.trim(),
             message = message.trim(),
             targetAudience = targetAudience,
             timestamp = dateFormat.format(Date()) + " (edited)",
-            actionUrl = actionUrl
+            actionUrl = actionUrl,
+            expiryDays = expiryDays,
+            expiresAt = expiresAt
         )
         currentList[index] = updated
         _broadcasts.value = currentList
@@ -416,6 +427,8 @@ class PlatformRepository private constructor(private val context: Context?) {
                     put("message", updated.message)
                     put("target_audience", updated.targetAudience)
                     put("timestamp", updated.timestamp)
+                    put("expiry_days", updated.expiryDays)
+                    put("expires_at", updated.expiresAt)
                 }.toString())
             } catch (e: Exception) {
                 Log.e("PlatformRepository", "Error updating broadcast in cloud: ${e.message}")
@@ -446,8 +459,14 @@ class PlatformRepository private constructor(private val context: Context?) {
         val list = _broadcasts.value
         if (list.isEmpty()) return null
         val dismissed = _dismissedBroadcastIds.value
+        val now = System.currentTimeMillis()
 
         return list.firstOrNull { bc ->
+            // Filter out expired broadcast
+            if (bc.expiresAt > 0L && now > bc.expiresAt) {
+                return@firstOrNull false
+            }
+
             val dismissKey = bc.id + "_" + bc.timestamp
             if (dismissed.contains(dismissKey) || dismissed.contains(bc.id)) {
                 false
@@ -477,6 +496,8 @@ class PlatformRepository private constructor(private val context: Context?) {
                     put("scheduledFor", b.scheduledFor ?: "")
                     put("isSent", b.isSent)
                     put("actionUrl", b.actionUrl ?: "")
+                    put("expiryDays", b.expiryDays)
+                    put("expiresAt", b.expiresAt)
                 })
             }
             prefs?.edit()?.putString("platform_broadcasts_json", arr.toString())?.apply()
@@ -836,7 +857,9 @@ class PlatformRepository private constructor(private val context: Context?) {
                             timestamp = o.optString("timestamp", ""),
                             scheduledFor = if (o.has("scheduledFor") && !o.isNull("scheduledFor")) o.getString("scheduledFor") else null,
                             isSent = o.optBoolean("isSent", true),
-                            actionUrl = if (o.has("actionUrl") && !o.isNull("actionUrl")) o.getString("actionUrl") else null
+                            actionUrl = if (o.has("actionUrl") && !o.isNull("actionUrl")) o.getString("actionUrl") else null,
+                            expiryDays = o.optInt("expiryDays", 7),
+                            expiresAt = o.optLong("expiresAt", 0L)
                         )
                     )
                 }

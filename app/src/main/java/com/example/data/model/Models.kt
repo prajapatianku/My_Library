@@ -69,7 +69,9 @@ data class OwnerProfile(
     val whatsapp: String = "+91 9876543210",
     val email: String = "ratneshankit123@gmail.com",
     val avatarUrl: String = "",
-    val password: String = "admin123"
+    val password: String = "admin123",
+    val isSuspended: Boolean = false,
+    val suspensionReason: String = ""
 )
 
 data class Library(
@@ -302,3 +304,76 @@ data class SaaSPurchaseRecord(
     val billingPeriod: String = "Monthly",
     val branchCount: Int = 1
 )
+
+// =========================================================================
+// SUPER ADMIN (PLATFORM OWNER) & PLATFORM BUSINESS MODELS
+// =========================================================================
+
+data class PlatformTransaction(
+    val id: String = UUID.randomUUID().toString(),
+    val transactionId: String, // Razorpay payment ID (e.g. pay_...) or TXN-COMP
+    val accountId: String,
+    val ownerName: String,
+    val ownerPhone: String,
+    val libraryName: String,
+    val planName: String, // "Vidyara Pro", "Vidyara Business", "Vidyara Mini"
+    val billingPeriod: String = "Monthly", // "Monthly", "Six Month", "Yearly"
+    val amount: Int,
+    val discountAmount: Int = 0,
+    val couponCode: String? = null,
+    val timestamp: String,
+    val status: String = "SUCCESS", // "SUCCESS", "FAILED", "REFUNDED"
+    val isComplimentary: Boolean = false
+)
+
+data class PlatformPlanPricing(
+    val miniMonthlyPrice: Int = 49,
+    val miniYearlyPrice: Int = 499,
+    val proMonthlyPrice: Int = 99,
+    val proYearlyPrice: Int = 899,
+    val businessMonthlyPrice: Int = 199,
+    val businessYearlyPrice: Int = 1799,
+    val additionalBranchMonthlyPrice: Int = 99,
+    val additionalBranchYearlyPrice: Int = 899,
+    val gracePeriodDays: Int = 3,
+    val studentFreeLimit: Int = 20
+)
+
+data class PlatformCoupon(
+    val id: String = UUID.randomUUID().toString(),
+    val code: String, // e.g. "LAUNCH50"
+    val discountType: String = "PERCENT", // "PERCENT" or "FLAT"
+    val discountValue: Int = 50, // 50% or ₹50
+    val targetPlan: String = "ALL", // "ALL", "MINI", "PRO", "BUSINESS"
+    val expiryDate: String = "2026-12-31",
+    val maxUses: Int = 100,
+    var usedCount: Int = 0,
+    val isActive: Boolean = true
+)
+
+data class PlatformBroadcast(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val message: String,
+    val targetAudience: String = "ALL", // "ALL", "FREE_ONLY", "PRO_ONLY", "BUSINESS_ONLY", "EXPIRED_ONLY"
+    val timestamp: String,
+    val scheduledFor: String? = null,
+    val isSent: Boolean = true,
+    val actionUrl: String? = null
+)
+
+data class PlatformAppControl(
+    val maintenanceMode: Boolean = false,
+    val maintenanceMessage: String = "Vidyara Platform is currently undergoing scheduled maintenance. Services will resume shortly.",
+    val minSupportedVersion: String = "2.4.0",
+    val latestVersion: String = "2.5.0",
+    val forceUpdatePrompt: Boolean = false,
+    val whatsNewTitle: String = "What's New in Vidyara v2.5",
+    val whatsNewBullets: List<String> = listOf(
+        "Sequential numeric seat numbering (1, 2, 3...)",
+        "Existing student backdated admission & 28-day due date calculation",
+        "Super Admin Platform Operations & Instant Cloud Sync",
+        "Coupon codes and promotional discounts"
+    )
+)
+

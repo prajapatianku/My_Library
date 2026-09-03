@@ -53,12 +53,75 @@ fun DashboardScreen(
         viewModel.getSubscriptionDaysRemaining()
     }
 
+    val appControl by viewModel.platformAppControl.collectAsState()
+    val broadcasts by viewModel.platformBroadcasts.collectAsState()
+    val isSubExpired = daysRemaining == 0 && saasPlan.planType != com.example.data.model.SaaSPlanType.FREE
+    val activeBroadcast = remember(broadcasts, saasPlan, isSubExpired) {
+        viewModel.platformRepository.getActiveBroadcastForOwner(saasPlan.planType, isSubExpired)
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(SlateBackground),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
+        // Platform Maintenance Banner
+        if (appControl.maintenanceMode) {
+            item {
+                Surface(
+                    color = Color(0xFFFEF3C7),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Engineering, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SYSTEM NOTICE: ${appControl.maintenanceMessage}",
+                            color = Color(0xFF92400E),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        // Active Platform Super Admin Broadcast Announcement
+        activeBroadcast?.let { bc ->
+            item {
+                Surface(
+                    color = NavyPrimary,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Campaign, contentDescription = null, tint = AmberTertiary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = bc.title,
+                                color = AmberTertiary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = bc.message,
+                                color = PureWhite,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         if (daysRemaining in 0..7) {
             item {
                 Surface(

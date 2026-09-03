@@ -40,6 +40,7 @@ fun UpgradeModal(
     val context = LocalContext.current
     val currentPlan by viewModel.saasSubscription.collectAsState()
     val targetFeature by viewModel.upgradeTargetFeature.collectAsState()
+    val platformPricing by viewModel.platformPricing.collectAsState()
 
     var selectedPlan by remember {
         mutableStateOf(
@@ -49,6 +50,12 @@ fun UpgradeModal(
     var billingPeriod by remember { mutableStateOf(BillingPeriod.SIX_MONTH) }
     var isProcessingPayment by remember { mutableStateOf(false) }
     var selectedBranchCount by remember { mutableStateOf(1) }
+
+    // Coupon Code states
+    var enteredCouponCode by remember { mutableStateOf("") }
+    var appliedCouponCode by remember { mutableStateOf<String?>(null) }
+    var couponDiscountAmount by remember { mutableStateOf(0) }
+    var couponFeedback by remember { mutableStateOf<String?>(null) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -352,7 +359,8 @@ fun UpgradeModal(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Plan: PREMIUM (2nd Plan)
-                        val premiumPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹99/mo" else "₹399 / 6 mos"
+                        val proRate = if (billingPeriod == BillingPeriod.MONTHLY) platformPricing.proMonthlyPrice else platformPricing.proYearlyPrice
+                        val premiumPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹$proRate / mo" else "₹$proRate / yr"
                         PlanSelectionCard(
                             title = "VIDYARA PRO",
                             badge = "POPULAR",
@@ -375,15 +383,11 @@ fun UpgradeModal(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Plan: BUSINESS (3rd Plan)
-                        val businessPrice = if (billingPeriod == BillingPeriod.MONTHLY) {
-                            val base = 199
-                            val additional = (selectedBranchCount - 1) * 99
-                            "₹${base + additional}/mo"
-                        } else {
-                            val base = 999
-                            val additional = (selectedBranchCount - 1) * 499
-                            "₹${base + additional} / 6 mos"
-                        }
+                        val bizBase = if (billingPeriod == BillingPeriod.MONTHLY) platformPricing.businessMonthlyPrice else platformPricing.businessYearlyPrice
+                        val branchRate = if (billingPeriod == BillingPeriod.MONTHLY) platformPricing.additionalBranchMonthlyPrice else platformPricing.additionalBranchYearlyPrice
+                        val additional = (selectedBranchCount - 1).coerceAtLeast(0) * branchRate
+                        val totalBiz = bizBase + additional
+                        val businessPrice = if (billingPeriod == BillingPeriod.MONTHLY) "₹$totalBiz / mo" else "₹$totalBiz / yr"
                         PlanSelectionCard(
                             title = "VIDYARA BUSINESS",
                             badge = "MULTI-BRANCH",
@@ -461,7 +465,107 @@ fun UpgradeModal(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Coupon / Promo Code Input Section
+                    if (selectedPlan != SaaSPlanType.FREE && selectedPlan != currentPlan.planType) {
+                        val calculatedBasePrice = when (selectedPlan) {
+                            SaaSPlanType.PREMIUM -> if (billingPeriod == BillingPeriod.MONTHLY) platformPricing.proMonthlyPrice else platformPricing.proYearlyPrice
+                            SaaSPlanType.BUSINESS -> {
+                                val base = if (billingPeriod == BillingPeriod.MONTHLY) platformPricing.businessMonthlyPrice else platformPricing.businessYearlyPrice
+                                val extra = (selectedBranchCount - 1).coerceAtLeast(0) * (if (billingPeriod == BillingPeriod.MONTHLY) platformPricing.additionalBranchMonthlyPrice else platformPricing.additionalBranchYearlyPrice)
+                                base + extra
+                            }
+                            else -> 0
+                        }
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = PureWhite),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = enteredCouponCode,
+                                        onValueChange = { enteredCouponCode = it.uppercase() },
+                                        placeholder = { Text("Have a promo code? (e.g. WELCOME50)", fontSize = 11.sp) },
+                                        singleLine = true,
+                                        textStyle = AppInputTextStyle,
+                                        colors = appOutlinedTextFieldColors(),
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    Button(
+                                        onClick = {
+                                            if (enteredCouponCode.isNotBlank()) {
+                                                val (valid, discounted) = viewModel.validateCoupon(
+                                                    enteredCouponCode,
+                                                    selectedPlan.displayName,
+                                                    calculatedBasePrice
+                                                )
+                                                if (valid) {
+                                                    appliedCouponCode = enteredCouponCode.trim().uppercase()
+                                                    couponDiscountAmount = calculatedBasePrice - discounted
+                                                    couponFeedback = "Coupon $appliedCouponCode applied! ₹$couponDiscountAmount saved."
+                                                } else {
+                                                    appliedCouponCode = null
+                                                    couponDiscountAmount = 0
+                                                    couponFeedback = "Invalid or expired coupon code."
+                                                }
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                                    ) {
+                                        Text("Apply", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                couponFeedback?.let { fb ->
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = fb,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (appliedCouponCode != null) Color(0xFF16A34A) else DangerRed
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Price summary row
+                        val finalAmount = (calculatedBasePrice - couponDiscountAmount).coerceAtLeast(0)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Total Payable:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (couponDiscountAmount > 0) {
+                                    Text(
+                                        text = "₹$calculatedBasePrice",
+                                        fontSize = 12.sp,
+                                        color = WarmTextMuted,
+                                        style = androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text("₹$finalAmount", fontSize = 18.sp, fontWeight = FontWeight.Black, color = OrangePrimaryDark)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Bottom Action Button
                     if (selectedPlan == currentPlan.planType) {
@@ -481,11 +585,22 @@ fun UpgradeModal(
                                 isProcessingPayment = true
                                 val activity = context as? MainActivity
                                 if (activity != null) {
-                                    activity.startSaaSPayment(selectedPlan, billingPeriod, branchCount = selectedBranchCount)
+                                    activity.startSaaSPayment(
+                                        plan = selectedPlan,
+                                        period = billingPeriod,
+                                        branchCount = selectedBranchCount,
+                                        couponCode = appliedCouponCode,
+                                        discountAmount = couponDiscountAmount
+                                    )
                                     onDismiss()
                                 } else {
-                                    // Fallback
-                                    viewModel.upgradeSaaS(selectedPlan, billingPeriod, selectedBranchCount)
+                                    viewModel.upgradeSaaS(
+                                        planType = selectedPlan,
+                                        period = billingPeriod,
+                                        allowedBranches = selectedBranchCount,
+                                        discountAmount = couponDiscountAmount,
+                                        couponCode = appliedCouponCode
+                                    )
                                     onDismiss()
                                 }
                                 isProcessingPayment = false

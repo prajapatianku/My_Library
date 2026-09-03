@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.*
 import com.example.data.repository.LibraryRepository
+import com.example.data.repository.PlatformRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -41,6 +42,16 @@ class LibraryViewModel(
     val auditLogs = repository.auditLogs
     val isLoggedIn = repository.isLoggedIn
     val isOnboardingCompleted = repository.isOnboardingCompleted
+
+    // Platform (Super Admin) Repository & State
+    val platformRepository: PlatformRepository = PlatformRepository.getInstance()
+    val platformPricing = platformRepository.pricing
+    val platformCoupons = platformRepository.coupons
+    val platformTransactions = platformRepository.transactions
+    val platformBroadcasts = platformRepository.broadcasts
+    val platformAppControl = platformRepository.appControl
+    val isSuperAdminAuthenticated = platformRepository.isSuperAdminAuthenticated
+    val superAdminOtp = platformRepository.superAdminOtp
 
     init {
         repository.checkSubscriptionStatus()
@@ -437,19 +448,120 @@ class LibraryViewModel(
         planType: SaaSPlanType, 
         period: BillingPeriod, 
         allowedBranches: Int = 1,
-        razorpayPaymentId: String? = null
+        razorpayPaymentId: String? = null,
+        paidAmount: Int? = null,
+        discountAmount: Int = 0,
+        couponCode: String? = null
     ) {
         repository.upgradeSaaSPlan(planType, period, allowedBranches, razorpayPaymentId)
+        if (!razorpayPaymentId.isNullOrBlank()) {
+            val amount = paidAmount ?: when (planType) {
+                SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) platformPricing.value.proMonthlyPrice else platformPricing.value.proYearlyPrice
+                SaaSPlanType.BUSINESS -> if (period == BillingPeriod.MONTHLY) platformPricing.value.businessMonthlyPrice else platformPricing.value.businessYearlyPrice
+                else -> 0
+            }
+            recordPlatformPurchase(
+                razorpayPaymentId = razorpayPaymentId,
+                planName = planType.displayName,
+                billingPeriod = if (period == BillingPeriod.MONTHLY) "Monthly" else "Yearly",
+                amount = amount,
+                discountAmount = discountAmount,
+                couponCode = couponCode
+            )
+        }
         _showUpgradeModal.value = false
         _upgradeTargetFeature.value = null
         _uiToastMessage.value = "Upgraded to ${planType.displayName}! All features unlocked."
     }
 
-    fun purchaseAdditionalBranch(razorpayPaymentId: String? = null) {
+    fun purchaseAdditionalBranch(razorpayPaymentId: String? = null, paidAmount: Int? = null) {
         val proratedPrice = calculateProratedBranchPrice()
         repository.addSaaSSubscriptionBranch(razorpayPaymentId, proratedPrice)
+        if (!razorpayPaymentId.isNullOrBlank()) {
+            recordPlatformPurchase(
+                razorpayPaymentId = razorpayPaymentId,
+                planName = "Additional Branch Add-On",
+                billingPeriod = "Prorated Cycle",
+                amount = paidAmount ?: proratedPrice,
+                discountAmount = 0,
+                couponCode = null
+            )
+        }
         _showUpgradeModal.value = false
         _uiToastMessage.value = "Additional branch added to your subscription successfully!"
+    }
+
+    fun renewSaaS(
+        razorpayPaymentId: String? = null,
+        paidAmount: Int? = null,
+        discountAmount: Int = 0,
+        couponCode: String? = null
+    ) {
+        repository.renewSaaSPlan(razorpayPaymentId)
+        if (!razorpayPaymentId.isNullOrBlank()) {
+            val sub = saasSubscription.value
+            val amount = paidAmount ?: when (sub.planType) {
+                SaaSPlanType.PREMIUM -> if (sub.billingPeriod == BillingPeriod.MONTHLY) platformPricing.value.proMonthlyPrice else platformPricing.value.proYearlyPrice
+                SaaSPlanType.BUSINESS -> if (sub.billingPeriod == BillingPeriod.MONTHLY) platformPricing.value.businessMonthlyPrice else platformPricing.value.businessYearlyPrice
+                else -> 0
+            }
+            recordPlatformPurchase(
+                razorpayPaymentId = razorpayPaymentId,
+                planName = sub.planType.displayName,
+                billingPeriod = if (sub.billingPeriod == BillingPeriod.MONTHLY) "Monthly Renewal" else "Yearly Renewal",
+                amount = amount,
+                discountAmount = discountAmount,
+                couponCode = couponCode
+            )
+        }
+        _showUpgradeModal.value = false
+        _uiToastMessage.value = "Subscription renewed successfully!"
+    }
+
+    fun requestSuperAdminOtp(emailOrPhone: String): String {
+        return platformRepository.requestSuperAdminOtp(emailOrPhone)
+    }
+
+    fun verifySuperAdminLogin(emailOrPhone: String, pin: String, otp: String): Boolean {
+        return platformRepository.verifySuperAdminLogin(emailOrPhone, pin, otp)
+    }
+
+    fun logoutSuperAdmin() {
+        platformRepository.logoutSuperAdmin()
+    }
+
+    fun validateCoupon(code: String, planName: String, basePrice: Int): Pair<Boolean, Int> {
+        return platformRepository.validateCoupon(code, planName, basePrice)
+    }
+
+    fun recordPlatformPurchase(
+        razorpayPaymentId: String,
+        planName: String,
+        billingPeriod: String,
+        amount: Int,
+        discountAmount: Int = 0,
+        couponCode: String? = null
+    ) {
+        val owner = ownerProfile.value
+        val lib = repository.library.value
+        val tx = PlatformTransaction(
+            transactionId = razorpayPaymentId,
+            accountId = owner.userId.ifBlank { owner.id },
+            ownerName = owner.fullName,
+            ownerPhone = owner.phone,
+            libraryName = lib.name,
+            planName = planName,
+            billingPeriod = billingPeriod,
+            amount = amount,
+            discountAmount = discountAmount,
+            couponCode = couponCode,
+            timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()),
+            status = "SUCCESS"
+        )
+        platformRepository.recordTransaction(tx)
+        if (!couponCode.isNullOrBlank()) {
+            platformRepository.recordCouponUsed(couponCode)
+        }
     }
 
     fun calculateProratedBranchPrice(): Int {
@@ -460,21 +572,14 @@ class LibraryViewModel(
         if (daysRemaining <= 0) return 0
         
         val totalDays = if (sub.billingPeriod == BillingPeriod.MONTHLY) 28 else 168
-        
         val baseAdditionalPrice = if (sub.billingPeriod == BillingPeriod.MONTHLY) {
-            99
+            platformPricing.value.additionalBranchMonthlyPrice
         } else {
-            499
+            platformPricing.value.additionalBranchYearlyPrice
         }
         
         val proratedPrice = (baseAdditionalPrice * daysRemaining) / totalDays
         return proratedPrice.coerceAtLeast(1)
-    }
-
-    fun renewSaaS(razorpayPaymentId: String? = null) {
-        repository.renewSaaSPlan(razorpayPaymentId)
-        _showUpgradeModal.value = false
-        _uiToastMessage.value = "Subscription renewed successfully!"
     }
 
     fun generateSaaSInvoiceText(record: SaaSPurchaseRecord): String {

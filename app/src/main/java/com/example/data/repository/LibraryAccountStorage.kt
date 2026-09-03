@@ -190,6 +190,8 @@ class LibraryAccountStorage(private val context: Context?) {
             put("email", o.email)
             put("avatarUrl", o.avatarUrl)
             put("password", o.password)
+            put("isSuspended", o.isSuspended)
+            put("suspensionReason", o.suspensionReason)
         }
     }
 
@@ -491,7 +493,9 @@ class LibraryAccountStorage(private val context: Context?) {
             whatsapp = o.optString("whatsapp", o.optString("phone", "+91 9876543210")),
             email = o.optString("email", "owner@library.com"),
             avatarUrl = o.optString("avatarUrl", ""),
-            password = o.optString("password", "admin123")
+            password = o.optString("password", "admin123"),
+            isSuspended = o.optBoolean("isSuspended", false),
+            suspensionReason = o.optString("suspensionReason", "")
         )
     }
 

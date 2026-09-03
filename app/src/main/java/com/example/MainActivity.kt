@@ -21,6 +21,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.LibraryViewModel
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import com.example.data.model.SaaSPlanType
 import com.example.data.model.BillingPeriod
 
@@ -49,6 +58,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         var pendingBranchCount: Int = 1
         var isRenewalPayment: Boolean = false
         var isBranchPurchasePayment: Boolean = false
+        var pendingCouponCode: String? = null
+        var pendingDiscountAmount: Int = 0
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,38 +78,52 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         period: BillingPeriod, 
         isRenewal: Boolean = false,
         isBranchPurchase: Boolean = false,
-        branchCount: Int = 1
+        branchCount: Int = 1,
+        couponCode: String? = null,
+        discountAmount: Int = 0
     ) {
         pendingUpgradePlan = plan
         pendingUpgradePeriod = period
         isRenewalPayment = isRenewal
         isBranchPurchasePayment = isBranchPurchase
         pendingBranchCount = branchCount
+        pendingCouponCode = couponCode
+        pendingDiscountAmount = discountAmount
 
-        val amountInRupees = if (isBranchPurchase) {
+        val pricing = viewModel.platformPricing.value
+        val rawBaseAmount = if (isBranchPurchase) {
             viewModel.calculateProratedBranchPrice()
         } else {
             val basePrice = when (plan) {
-                SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) 99 else 399
-                SaaSPlanType.BUSINESS -> if (period == BillingPeriod.MONTHLY) 199 else 999
+                SaaSPlanType.PREMIUM -> if (period == BillingPeriod.MONTHLY) pricing.proMonthlyPrice else pricing.proYearlyPrice
+                SaaSPlanType.BUSINESS -> if (period == BillingPeriod.MONTHLY) pricing.businessMonthlyPrice else pricing.businessYearlyPrice
                 else -> 0
             }
             if (plan == SaaSPlanType.BUSINESS && branchCount > 1) {
                 val additionalCount = branchCount - 1
-                val additionalBranchBasePrice = if (period == BillingPeriod.MONTHLY) 99 else 499
+                val additionalBranchBasePrice = if (period == BillingPeriod.MONTHLY) pricing.additionalBranchMonthlyPrice else pricing.additionalBranchYearlyPrice
                 basePrice + (additionalCount * additionalBranchBasePrice)
             } else {
                 basePrice
             }
         }
 
+        val amountInRupees = (rawBaseAmount - discountAmount).coerceAtLeast(0)
+
         if (amountInRupees == 0) {
             if (isBranchPurchase) {
-                viewModel.purchaseAdditionalBranch()
+                viewModel.purchaseAdditionalBranch(paidAmount = 0)
             } else if (isRenewal) {
-                viewModel.renewSaaS()
+                viewModel.renewSaaS(paidAmount = 0, discountAmount = discountAmount, couponCode = couponCode)
             } else {
-                viewModel.upgradeSaaS(plan, period, branchCount)
+                viewModel.upgradeSaaS(
+                    planType = plan,
+                    period = period,
+                    allowedBranches = branchCount,
+                    paidAmount = 0,
+                    discountAmount = discountAmount,
+                    couponCode = couponCode
+                )
             }
             return
         }
@@ -142,15 +167,29 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
     override fun onPaymentSuccess(razorpayPaymentId: String?) {
         val targetPlan = pendingUpgradePlan
         val targetPeriod = pendingUpgradePeriod
+        val coupon = pendingCouponCode
+        val discount = pendingDiscountAmount
+
         if (targetPlan != null && targetPeriod != null) {
             if (isBranchPurchasePayment) {
                 viewModel.purchaseAdditionalBranch(razorpayPaymentId)
                 Toast.makeText(this, "Branch successfully added to your subscription!", Toast.LENGTH_LONG).show()
             } else if (isRenewalPayment) {
-                viewModel.renewSaaS(razorpayPaymentId)
+                viewModel.renewSaaS(
+                    razorpayPaymentId = razorpayPaymentId,
+                    discountAmount = discount,
+                    couponCode = coupon
+                )
                 Toast.makeText(this, "Subscription renewed successfully!", Toast.LENGTH_LONG).show()
             } else {
-                viewModel.upgradeSaaS(targetPlan, targetPeriod, pendingBranchCount, razorpayPaymentId)
+                viewModel.upgradeSaaS(
+                    planType = targetPlan,
+                    period = targetPeriod,
+                    allowedBranches = pendingBranchCount,
+                    razorpayPaymentId = razorpayPaymentId,
+                    discountAmount = discount,
+                    couponCode = coupon
+                )
                 Toast.makeText(this, "Payment successful! Upgraded to ${targetPlan.displayName}", Toast.LENGTH_LONG).show()
             }
         }
@@ -159,6 +198,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         pendingBranchCount = 1
         isRenewalPayment = false
         isBranchPurchasePayment = false
+        pendingCouponCode = null
+        pendingDiscountAmount = 0
     }
 
     override fun onPaymentError(code: Int, description: String?) {
@@ -168,6 +209,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
         pendingBranchCount = 1
         isRenewalPayment = false
         isBranchPurchasePayment = false
+        pendingCouponCode = null
+        pendingDiscountAmount = 0
     }
 }
 
@@ -200,9 +243,13 @@ fun MainApp(
     val activeBranchId by viewModel.activeBranchId.collectAsState()
     val library by viewModel.library.collectAsState()
     val shifts by viewModel.shifts.collectAsState()
+    val ownerProfile by viewModel.ownerProfile.collectAsState()
+    val isSuperAdminAuth by viewModel.isSuperAdminAuthenticated.collectAsState()
 
     var selectedTab by remember { mutableStateOf(MainNavigationTab.DASHBOARD) }
     var showSplash by remember { mutableStateOf(true) }
+    var showSuperAdminScreen by remember { mutableStateOf(false) }
+    var showSuperAdminLoginDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(toastMessage) {
         toastMessage?.let { msg ->
@@ -211,14 +258,71 @@ fun MainApp(
         }
     }
 
-    if (showSplash) {
+    if (showSuperAdminScreen && isSuperAdminAuth) {
+        SuperAdminScreen(
+            viewModel = viewModel,
+            onExitToApp = { showSuperAdminScreen = false }
+        )
+    } else if (showSplash) {
         SplashScreen(
             onAnimationFinished = { showSplash = false }
         )
+    } else if (ownerProfile.isSuspended) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = SlateBackground
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFEE2E2)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Block, contentDescription = null, tint = DangerRed, modifier = Modifier.size(40.dp))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Account Deactivated", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = WarmTextDark)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = ownerProfile.suspensionReason.ifBlank { "Your library account has been temporarily deactivated by the platform administrator." },
+                    textAlign = TextAlign.Center,
+                    fontSize = 13.sp,
+                    color = WarmTextMuted
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:+919876543210"))
+                        context.startActivity(intent)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Phone, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Contact Platform Support", fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                TextButton(onClick = { showSuperAdminLoginDialog = true }) {
+                    Text("Platform Owner Login", fontSize = 12.sp, color = WarmTextMuted)
+                }
+            }
+        }
     } else if (!isLoggedIn) {
         LoginScreen(
             viewModel = viewModel,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            onOpenSuperAdmin = {
+                if (isSuperAdminAuth) showSuperAdminScreen = true else showSuperAdminLoginDialog = true
+            }
         )
     } else if (!isOnboardingDone) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -297,10 +401,26 @@ fun MainApp(
                     MainNavigationTab.ATTENDANCE -> AttendanceScreen(viewModel = viewModel)
                     MainNavigationTab.PAYMENTS -> PaymentsExpensesScreen(viewModel = viewModel)
                     MainNavigationTab.REPORTS -> ReportsScreen(viewModel = viewModel)
-                    MainNavigationTab.SETTINGS -> SettingsScreen(viewModel = viewModel)
+                    MainNavigationTab.SETTINGS -> SettingsScreen(
+                        viewModel = viewModel,
+                        onOpenSuperAdmin = {
+                            if (isSuperAdminAuth) showSuperAdminScreen = true else showSuperAdminLoginDialog = true
+                        }
+                    )
                 }
             }
         }
+    }
+
+    if (showSuperAdminLoginDialog) {
+        SuperAdminLoginDialog(
+            viewModel = viewModel,
+            onSuccess = {
+                showSuperAdminLoginDialog = false
+                showSuperAdminScreen = true
+            },
+            onDismiss = { showSuperAdminLoginDialog = false }
+        )
     }
 
     // Global Modal & Dialog Controllers (Accessible across all tabs & home quick actions)

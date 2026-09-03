@@ -237,6 +237,27 @@ class LibraryRepository(
         return false
     }
 
+    fun isAccountAlreadyRegistered(phone: String, email: String): Boolean {
+        val normPhone = phone.replace("+", "").replace(" ", "").replace("-", "").trim()
+        val normEmail = email.trim().lowercase()
+
+        val allAccounts = storage.getAllAccounts().values
+        return allAccounts.any { acc ->
+            val p = acc.ownerProfile.phone.replace("+", "").replace(" ", "").replace("-", "").trim()
+            val e = acc.ownerProfile.email.trim().lowercase()
+            (normPhone.isNotBlank() && (p == normPhone || (normPhone.length >= 10 && p.endsWith(normPhone.takeLast(10))))) ||
+            (normEmail.isNotBlank() && e == normEmail)
+        }
+    }
+
+    fun updateSuspensionState(isSuspended: Boolean, reason: String = "") {
+        _ownerProfile.value = _ownerProfile.value.copy(
+            isSuspended = isSuspended,
+            suspensionReason = reason
+        )
+        persistCurrentAccount()
+    }
+
     fun registerFullLibrary(
         ownerName: String,
         phone: String,
@@ -253,7 +274,11 @@ class LibraryRepository(
         pincode: String = "",
         seatCapacity: Int,
         customShifts: List<Shift>? = null
-    ) {
+    ): Boolean {
+        if (isAccountAlreadyRegistered(phone, email)) {
+            return false
+        }
+
         val ownerId = "owner_${System.currentTimeMillis().toString().takeLast(6)}"
         val libId = "lib_${System.currentTimeMillis().toString().takeLast(6)}"
         val libCapacity = if (seatCapacity in 10..500) seatCapacity else 60
@@ -356,6 +381,7 @@ class LibraryRepository(
 
         _isLoggedIn.value = true
         _isOnboardingCompleted.value = true
+        return true
     }
 
     fun logout() {

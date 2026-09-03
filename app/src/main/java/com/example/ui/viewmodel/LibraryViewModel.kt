@@ -953,6 +953,10 @@ class LibraryViewModel(
         _uiToastMessage.value = "Welcome, $fullName! Your library is ready."
     }
 
+    fun isAccountAlreadyRegistered(phone: String, email: String): Boolean {
+        return repository.isAccountAlreadyRegistered(phone, email)
+    }
+
     fun registerFullLibrary(
         ownerName: String,
         phone: String,
@@ -969,8 +973,8 @@ class LibraryViewModel(
         pincode: String = "",
         seatCapacity: Int,
         shifts: List<Shift>? = null
-    ) {
-        repository.registerFullLibrary(
+    ): Boolean {
+        val success = repository.registerFullLibrary(
             ownerName = ownerName,
             phone = phone,
             whatsapp = whatsapp,
@@ -987,7 +991,44 @@ class LibraryViewModel(
             seatCapacity = seatCapacity,
             customShifts = shifts
         )
-        _uiToastMessage.value = "🎉 Registration complete! Welcome $ownerName to $libraryName."
+        if (success) {
+            _uiToastMessage.value = "🎉 Registration complete! Welcome $ownerName to $libraryName."
+        } else {
+            _uiToastMessage.value = "⚠️ An account with this phone number or email is already registered. Only 1 account is permitted. Please log in or contact the platform owner."
+        }
+        return success
+    }
+
+    fun toggleAccountSuspension(accountId: String, isSuspended: Boolean, reason: String = ""): Boolean {
+        val success = platformRepository.toggleAccountSuspension(accountId, isSuspended, reason)
+        if (success) {
+            val currentActiveOwner = repository.ownerProfile.value
+            if (currentActiveOwner.userId == accountId ||
+                currentActiveOwner.phone == accountId ||
+                currentActiveOwner.email.equals(accountId, ignoreCase = true)
+            ) {
+                repository.updateSuspensionState(isSuspended, reason)
+            }
+            _uiToastMessage.value = if (isSuspended) "🚫 Library account deactivated successfully." else "✅ Library account reactivated successfully."
+        }
+        return success
+    }
+
+    fun deleteLibraryAccount(accountId: String): Boolean {
+        val success = platformRepository.deleteLibraryAccount(accountId)
+        if (success) {
+            val currentActiveOwner = repository.ownerProfile.value
+            if (currentActiveOwner.userId == accountId ||
+                currentActiveOwner.phone == accountId ||
+                currentActiveOwner.email.equals(accountId, ignoreCase = true)
+            ) {
+                repository.logout()
+            }
+            _uiToastMessage.value = "🗑️ Library account permanently deleted."
+        } else {
+            _uiToastMessage.value = "❌ Failed to delete account."
+        }
+        return success
     }
 
     // ==========================================

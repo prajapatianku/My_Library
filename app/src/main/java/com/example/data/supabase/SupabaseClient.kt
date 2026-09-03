@@ -142,4 +142,21 @@ class SupabaseApiClient {
             false
         }
     }
+
+    suspend fun deleteAccount(accountId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val url = "${SupabaseConfig.SUPABASE_URL}/rest/v1/library_accounts?id=eq.$accountId"
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+                .delete()
+                .build()
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.e("SupabaseApiClient", "Error deleting account $accountId: ${e.message}")
+            false
+        }
+    }
 }

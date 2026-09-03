@@ -91,6 +91,47 @@ class LibraryAccountStorage(private val context: Context? = null) {
         }
     }
 
+    fun deleteAccount(accountId: String): Boolean {
+        try {
+            val currentAccounts = getAllAccounts().toMutableMap()
+            val target = currentAccounts.values.find {
+                it.accountId == accountId ||
+                it.ownerProfile.phone == accountId ||
+                normalizePhone(it.ownerProfile.phone) == normalizePhone(accountId) ||
+                it.ownerProfile.email.equals(accountId.trim(), ignoreCase = true)
+            } ?: return false
+
+            val pKey = normalizePhone(target.ownerProfile.phone)
+            val eKey = target.ownerProfile.email.trim().lowercase()
+
+            currentAccounts.remove(pKey)
+            currentAccounts.remove(eKey)
+
+            val remainingUnique = currentAccounts.values.filter { it.accountId != target.accountId }
+            val rootObj = JSONObject()
+            remainingUnique.forEach { acc ->
+                val pk = normalizePhone(acc.ownerProfile.phone)
+                val ek = acc.ownerProfile.email.trim().lowercase()
+                val k = if (pk.isNotBlank()) pk else ek
+                rootObj.put(k, serializeAccount(acc))
+                if (ek.isNotBlank() && ek != k) {
+                    rootObj.put(ek, serializeAccount(acc))
+                }
+            }
+
+            val editor = prefs?.edit() ?: return false
+            editor.putString(KEY_ACCOUNTS_MAP, rootObj.toString())
+            if (prefs.getString(KEY_LAST_LOGGED_IN_ID, "") == target.accountId) {
+                editor.remove(KEY_LAST_LOGGED_IN_ID)
+            }
+            editor.apply()
+            return true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+    }
+
     fun findAccount(query: String): SavedLibraryAccount? {
         val accounts = getAllAccounts()
         val normQuery = query.trim().lowercase()
@@ -128,7 +169,7 @@ class LibraryAccountStorage(private val context: Context? = null) {
         prefs?.edit()?.clear()?.apply()
     }
 
-    private fun normalizePhone(phone: String): String {
+    fun normalizePhone(phone: String): String {
         return phone.replace("+", "")
             .replace(" ", "")
             .replace("-", "")

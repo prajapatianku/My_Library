@@ -564,7 +564,13 @@ class PlatformRepository private constructor(private val context: Context?) {
 
     fun toggleAccountSuspension(accountId: String, isSuspended: Boolean, reason: String = ""): Boolean {
         val allAccounts = storage.getAllAccounts()
-        val account = allAccounts.values.find { it.accountId == accountId } ?: return false
+        val account = allAccounts.values.find {
+            it.accountId == accountId ||
+            it.ownerProfile.userId == accountId ||
+            it.ownerProfile.phone == accountId ||
+            storage.normalizePhone(it.ownerProfile.phone) == storage.normalizePhone(accountId) ||
+            it.ownerProfile.email.equals(accountId.trim(), ignoreCase = true)
+        } ?: return false
 
         val updatedOwner = account.ownerProfile.copy(
             isSuspended = isSuspended,
@@ -572,6 +578,19 @@ class PlatformRepository private constructor(private val context: Context?) {
         )
         val updatedAccount = account.copy(ownerProfile = updatedOwner)
         storage.saveAccount(updatedAccount)
+
+        // Immediately update reactive list so UI recomposes instantly
+        val currentList = _ownersList.value.toMutableList()
+        val existingIndex = currentList.indexOfFirst {
+            it.accountId == account.accountId ||
+            storage.normalizePhone(it.ownerProfile.phone) == storage.normalizePhone(account.ownerProfile.phone)
+        }
+        if (existingIndex != -1) {
+            currentList[existingIndex] = updatedAccount
+            _ownersList.value = currentList
+        } else {
+            refreshOwners()
+        }
 
         scope.launch {
             try {
@@ -583,6 +602,39 @@ class PlatformRepository private constructor(private val context: Context?) {
             }
         }
         return true
+    }
+
+    fun deleteLibraryAccount(accountId: String): Boolean {
+        val allAccounts = storage.getAllAccounts()
+        val account = allAccounts.values.find {
+            it.accountId == accountId ||
+            it.ownerProfile.userId == accountId ||
+            it.ownerProfile.phone == accountId ||
+            storage.normalizePhone(it.ownerProfile.phone) == storage.normalizePhone(accountId) ||
+            it.ownerProfile.email.equals(accountId.trim(), ignoreCase = true)
+        } ?: return false
+
+        val success = storage.deleteAccount(account.accountId)
+        if (success) {
+            val currentList = _ownersList.value.toMutableList()
+            currentList.removeAll {
+                it.accountId == account.accountId ||
+                storage.normalizePhone(it.ownerProfile.phone) == storage.normalizePhone(account.ownerProfile.phone)
+            }
+            _ownersList.value = currentList
+
+            scope.launch {
+                try {
+                    val phoneKey = account.ownerProfile.phone.replace("+", "").replace(" ", "").replace("-", "").trim()
+                    val primarySyncKey = phoneKey.ifBlank { account.ownerProfile.email.trim().lowercase() }
+                    supabaseClient.deleteAccount(primarySyncKey)
+                    supabaseClient.deleteAccount(account.accountId)
+                } catch (e: Exception) {
+                    Log.e("PlatformRepository", "Error deleting account from cloud: ${e.message}")
+                }
+            }
+        }
+        return success
     }
 
     // =========================================================================

@@ -71,35 +71,48 @@ fun SuperAdminScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Vidyara Platform Owner", fontSize = 17.sp, fontWeight = FontWeight.Black, color = PureWhite)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(color = AmberTertiary, shape = RoundedCornerShape(4.dp)) {
-                                Text("SUPER ADMIN", fontSize = 9.sp, fontWeight = FontWeight.Black, color = NavyPrimary, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Vidyara", fontSize = 20.sp, fontWeight = FontWeight.Black, color = PureWhite)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = AmberTertiary,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AdminPanelSettings,
+                                    contentDescription = null,
+                                    tint = NavyPrimary,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    "ADMIN",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = NavyPrimary
+                                )
                             }
                         }
-                        Text("Business Operations & Subscriptions", fontSize = 11.sp, color = PureWhite.copy(alpha = 0.7f))
                     }
                 },
                 actions = {
                     OutlinedButton(
-                        onClick = onExitToApp,
+                        onClick = {
+                            viewModel.logoutSuperAdmin()
+                            onExitToApp()
+                        },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = PureWhite),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, PureWhite.copy(alpha = 0.4f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, PureWhite.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Storefront, contentDescription = null, modifier = Modifier.size(15.dp), tint = PureWhite)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Exit to Library", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PureWhite)
-                    }
-
-                    IconButton(onClick = {
-                        viewModel.logoutSuperAdmin()
-                        onExitToApp()
-                    }) {
-                        Icon(Icons.Default.Logout, contentDescription = "Logout", tint = PureWhite)
+                        Icon(Icons.Default.Logout, contentDescription = "Logout", modifier = Modifier.size(15.dp), tint = PureWhite)
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text("Logout", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PureWhite)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyPrimary)
@@ -510,6 +523,8 @@ fun SuperAdminDirectoryTab(
     var selectedPlanFilter by remember { mutableStateOf("ALL") }
     var selectedStatusFilter by remember { mutableStateOf("ALL") }
 
+    var showDeleteDialogForAccount by remember { mutableStateOf<SavedLibraryAccount?>(null) }
+
     val filteredAccounts = remember(searchQuery, selectedPlanFilter, selectedStatusFilter, allAccounts) {
         allAccounts.filter { acc ->
             val matchesQuery = acc.ownerProfile.fullName.contains(searchQuery, ignoreCase = true) ||
@@ -593,11 +608,51 @@ fun SuperAdminDirectoryTab(
                     onInspect = { onInspectOwner(acc) },
                     onGrantSubscription = { onGrantSubscription(acc) },
                     onToggleSuspension = {
-                        viewModel.platformRepository.toggleAccountSuspension(acc.accountId, !acc.ownerProfile.isSuspended)
+                        viewModel.toggleAccountSuspension(acc.accountId, !acc.ownerProfile.isSuspended)
+                    },
+                    onDeleteAccount = {
+                        showDeleteDialogForAccount = acc
                     }
                 )
             }
         }
+    }
+
+    // Confirmation dialog to permanently delete a library account
+    showDeleteDialogForAccount?.let { accToDelete ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialogForAccount = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DeleteForever, contentDescription = null, tint = DangerRed)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Delete Library Account?", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                }
+            },
+            text = {
+                Text(
+                    "Are you sure you want to permanently delete \"${accToDelete.library.name}\" owned by ${accToDelete.ownerProfile.fullName} (${accToDelete.ownerProfile.phone})?\n\nThis will remove this library, its desks, students, and payment records. The owner will be free to register a new account afterwards.",
+                    fontSize = 13.sp,
+                    color = WarmTextDark
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteLibraryAccount(accToDelete.accountId)
+                        showDeleteDialogForAccount = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) {
+                    Text("Delete Permanently", color = PureWhite, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteDialogForAccount = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -606,7 +661,8 @@ fun OwnerDirectoryCard(
     account: SavedLibraryAccount,
     onInspect: () -> Unit,
     onGrantSubscription: () -> Unit,
-    onToggleSuspension: () -> Unit
+    onToggleSuspension: () -> Unit,
+    onDeleteAccount: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -653,7 +709,7 @@ fun OwnerDirectoryCard(
                     if (account.ownerProfile.isSuspended) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Surface(color = Color(0xFFFEE2E2), shape = RoundedCornerShape(4.dp)) {
-                            Text("SUSPENDED", fontSize = 8.sp, fontWeight = FontWeight.Black, color = DangerRed, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                            Text("DEACTIVATED", fontSize = 8.sp, fontWeight = FontWeight.Black, color = DangerRed, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
                         }
                     }
                 }
@@ -691,7 +747,8 @@ fun OwnerDirectoryCard(
             // Admin Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
                     onClick = onInspect,
@@ -704,26 +761,39 @@ fun OwnerDirectoryCard(
 
                 Button(
                     onClick = onGrantSubscription,
-                    modifier = Modifier.weight(1.3f),
+                    modifier = Modifier.weight(1.2f),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
-                    Icon(Icons.Default.CardGiftcard, contentDescription = null, modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.CardGiftcard, contentDescription = null, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text("Grant Plan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(
                     onClick = onToggleSuspension,
-                    modifier = Modifier.weight(0.9f),
+                    modifier = Modifier.weight(1.2f),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = if (account.ownerProfile.isSuspended) Color(0xFF16A34A) else DangerRed
                     ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (account.ownerProfile.isSuspended) Color(0xFF16A34A) else DangerRed),
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
-                    Text(if (account.ownerProfile.isSuspended) "Activate" else "Suspend", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(if (account.ownerProfile.isSuspended) "Reactivate" else "Deactivate", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                IconButton(
+                    onClick = onDeleteAccount,
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Account",
+                        tint = DangerRed,
+                        modifier = Modifier.size(19.dp)
+                    )
                 }
             }
         }

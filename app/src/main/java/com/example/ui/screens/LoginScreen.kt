@@ -863,6 +863,8 @@ fun LoginScreen(
                                             val err = validatePersonalDetails(ownerName, ownerPhone, ownerEmail, regPassword, regConfirmPassword)
                                             if (err != null) {
                                                 validationError = err
+                                            } else if (viewModel.isAccountAlreadyRegistered(ownerPhone, ownerEmail)) {
+                                                validationError = "An account with this Phone Number or Email is already registered. Only 1 account is permitted. Please log in instead."
                                             } else {
                                                 validationError = null
                                                 if (libraryContactNumber.isBlank()) libraryContactNumber = ownerPhone
@@ -1428,7 +1430,7 @@ fun LoginScreen(
                                                         )
                                                     }
 
-                                                viewModel.registerFullLibrary(
+                                                val registered = viewModel.registerFullLibrary(
                                                     ownerName = ownerName.ifBlank { "Library Owner" },
                                                     phone = ownerPhone.ifBlank { "+91 9876543210" },
                                                     whatsapp = ownerWhatsapp.ifBlank { ownerPhone },
@@ -1445,6 +1447,10 @@ fun LoginScreen(
                                                     seatCapacity = seatsCapacity,
                                                     shifts = configuredShifts
                                                 )
+                                                if (!registered) {
+                                                    validationError = "An account with this Phone Number or Email already exists. Only 1 account is permitted. Please log in or contact the platform administrator."
+                                                    regSection = RegSection.PERSONAL_DETAILS
+                                                }
                                             },
                                             modifier = Modifier
                                                 .weight(1.8f)

@@ -3,21 +3,18 @@ package com.example.data.auth
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
+import java.util.Properties
+import javax.mail.Authenticator
+import javax.mail.Message
+import javax.mail.PasswordAuthentication
+import javax.mail.Session
+import javax.mail.Transport
+import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeMessage
 
 object EmailSenderService {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
-
-    var customBrevoApiKey: String = ""
+    private const val GMAIL_SENDER = "ratneshankit123@gmail.com"
+    private const val GMAIL_APP_PASSWORD = "vytlpndyompmkcxx"
 
     suspend fun sendOtpEmail(
         recipientEmail: String,
@@ -31,76 +28,51 @@ object EmailSenderService {
             return@withContext
         }
 
-        // 1. Dispatch Firebase Auth Password Reset Email
-        FirebaseAuthService.sendPasswordResetEmail(email) { fbSuccess, fbMsg ->
-            Log.d("EmailSenderService", "Firebase dispatch for $email: $fbSuccess, $fbMsg")
-        }
-
-        // 2. Dispatch via Brevo if API key is present
-        if (customBrevoApiKey.isNotBlank()) {
-            try {
-                val jsonBody = JSONObject().apply {
-                    put("sender", JSONObject().apply {
-                        put("name", "Vidyara Library Support")
-                        put("email", "support@vidyara.com")
-                    })
-                    put("to", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("email", email)
-                            put("name", ownerName)
-                        })
-                    })
-                    put("subject", "Your Vidyara Password Reset OTP: $otpCode")
-                    put("htmlContent", """
-                        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                            <h2 style="color: #0f172a; margin-bottom: 8px;">Vidyara Library Management</h2>
-                            <p style="color: #475569; font-size: 14px;">Hello $ownerName,</p>
-                            <p style="color: #475569; font-size: 14px;">You requested to reset your password. Use the 6-digit OTP code below to verify your account in the app:</p>
-                            <div style="background-color: #f1f5f9; padding: 14px; text-align: center; border-radius: 8px; margin: 20px 0;">
-                                <span style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #ea580c;">$otpCode</span>
-                            </div>
-                            <p style="color: #64748b; font-size: 12px;">This verification code is valid for 10 minutes. If you did not request this, please ignore this email.</p>
-                        </div>
-                    """.trimIndent())
-                }
-
-                val request = Request.Builder()
-                    .url("https://api.brevo.com/v3/smtp/email")
-                    .addHeader("api-key", customBrevoApiKey)
-                    .addHeader("Content-Type", "application/json")
-                    .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
-                    .build()
-
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    Log.i("EmailSenderService", "Brevo OTP email delivered to $email")
-                    onComplete(true, "OTP email delivered successfully via Brevo.")
-                    return@withContext
-                } else {
-                    Log.w("EmailSenderService", "Brevo HTTP error: ${response.code}")
-                }
-            } catch (e: Exception) {
-                Log.e("EmailSenderService", "Brevo dispatch exception: ${e.message}")
-            }
-        }
-
-        // 3. Dispatch via Supabase recovery endpoint
         try {
-            val supabaseUrl = "https://ynqtzrkeburayuplqwek.supabase.co/auth/v1/recover"
-            val sbBody = JSONObject().apply { put("email", email) }
-            val sbReq = Request.Builder()
-                .url(supabaseUrl)
-                .addHeader("apikey", "sb_publishable_b9PQVAKGt1qLn-t5v9Bi1A_u9dVoTQD")
-                .addHeader("Content-Type", "application/json")
-                .post(sbBody.toString().toRequestBody("application/json".toMediaType()))
-                .build()
+            val props = Properties().apply {
+                put("mail.smtp.auth", "true")
+                put("mail.smtp.starttls.enable", "true")
+                put("mail.smtp.host", "smtp.gmail.com")
+                put("mail.smtp.port", "587")
+                put("mail.smtp.ssl.protocols", "TLSv1.2")
+            }
 
-            val sbRes = client.newCall(sbReq).execute()
-            Log.d("EmailSenderService", "Supabase recovery response: ${sbRes.code}")
+            val session = Session.getInstance(props, object : Authenticator() {
+                override fun getPasswordAuthentication(): PasswordAuthentication {
+                    return PasswordAuthentication(GMAIL_SENDER, GMAIL_APP_PASSWORD)
+                }
+            })
+
+            val message = MimeMessage(session).apply {
+                setFrom(InternetAddress(GMAIL_SENDER, "Vidyara Library Support"))
+                addRecipient(Message.RecipientType.TO, InternetAddress(email))
+                subject = "Vidyara - Your Verification OTP is $otpCode"
+
+                val html = """
+                    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+                        <h2 style="color: #0f172a; margin-bottom: 6px;">Vidyara Library</h2>
+                        <p style="color: #64748b; font-size: 13px; margin-top: 0;">Smart Library Automation Platform</p>
+                        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 16px 0;" />
+                        <p style="color: #334155; font-size: 14px;">Hello <b>$ownerName</b>,</p>
+                        <p style="color: #334155; font-size: 14px;">You requested to reset your password or verify your account. Please use the following 6-digit One-Time Password (OTP) in the Vidyara app:</p>
+                        <div style="background-color: #f8fafc; border: 2px dashed #ea580c; padding: 18px; text-align: center; border-radius: 10px; margin: 20px 0;">
+                            <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #ea580c;">$otpCode</span>
+                        </div>
+                        <p style="color: #64748b; font-size: 12px;">? This code is strictly confidential and expires in <b>10 minutes</b>. Please do not share it with anyone.</p>
+                        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 16px 0;" />
+                        <p style="color: #94a3b8; font-size: 11px;">If you didn't request this code, you can safely ignore this email.</p>
+                    </div>
+                """.trimIndent()
+
+                setContent(html, "text/html; charset=utf-8")
+            }
+
+            Transport.send(message)
+            Log.i("EmailSenderService", "? OTP $otpCode sent via Gmail SMTP to $email successfully!")
+            onComplete(true, "OTP email sent successfully to $email via Gmail.")
         } catch (e: Exception) {
-            Log.w("EmailSenderService", "Supabase recovery exception: ${e.message}")
+            Log.e("EmailSenderService", "? Gmail SMTP error sending to $email: ${e.message}", e)
+            onComplete(false, "Failed to send email: ${e.localizedMessage}")
         }
-
-        onComplete(true, "Verification OTP dispatched to $email.")
     }
 }

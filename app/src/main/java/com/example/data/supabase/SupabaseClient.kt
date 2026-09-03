@@ -159,4 +159,42 @@ class SupabaseApiClient {
             false
         }
     }
+
+    suspend fun updateRecord(tableName: String, filterColumn: String, filterValue: String, jsonBody: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val url = "${SupabaseConfig.SUPABASE_URL}/rest/v1/$tableName?$filterColumn=eq.$filterValue"
+            val body = jsonBody.toRequestBody(jsonMediaType)
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+                .addHeader("Content-Type", "application/json")
+                .patch(body)
+                .build()
+
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.e("SupabaseApiClient", "Error updating $tableName: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun deleteRecord(tableName: String, filterColumn: String, filterValue: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val url = "${SupabaseConfig.SUPABASE_URL}/rest/v1/$tableName?$filterColumn=eq.$filterValue"
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+                .delete()
+                .build()
+
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.e("SupabaseApiClient", "Error deleting from $tableName: ${e.message}")
+            false
+        }
+    }
 }

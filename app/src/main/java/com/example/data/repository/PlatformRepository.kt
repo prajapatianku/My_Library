@@ -380,18 +380,86 @@ class PlatformRepository private constructor(private val context: Context?) {
         return broadcast
     }
 
+    private val _dismissedBroadcastIds = MutableStateFlow<Set<String>>(emptySet())
+    val dismissedBroadcastIds: StateFlow<Set<String>> = _dismissedBroadcastIds.asStateFlow()
+
+    fun dismissBroadcast(idWithTimestamp: String) {
+        val updated = _dismissedBroadcastIds.value + idWithTimestamp
+        _dismissedBroadcastIds.value = updated
+        try {
+            prefs?.edit()?.putStringSet("dismissed_broadcast_ids", updated)?.apply()
+        } catch (e: Exception) {
+            Log.e("PlatformRepository", "Error saving dismissed broadcasts: ${e.message}")
+        }
+    }
+
+    fun updateBroadcast(id: String, title: String, message: String, targetAudience: String, actionUrl: String? = null): Boolean {
+        val currentList = _broadcasts.value.toMutableList()
+        val index = currentList.indexOfFirst { it.id == id }
+        if (index == -1) return false
+
+        val updated = currentList[index].copy(
+            title = title.trim(),
+            message = message.trim(),
+            targetAudience = targetAudience,
+            timestamp = dateFormat.format(Date()) + " (edited)",
+            actionUrl = actionUrl
+        )
+        currentList[index] = updated
+        _broadcasts.value = currentList
+        persistBroadcasts()
+
+        scope.launch {
+            try {
+                supabaseClient.updateRecord("platform_broadcasts", "id", id, JSONObject().apply {
+                    put("title", updated.title)
+                    put("message", updated.message)
+                    put("target_audience", updated.targetAudience)
+                    put("timestamp", updated.timestamp)
+                }.toString())
+            } catch (e: Exception) {
+                Log.e("PlatformRepository", "Error updating broadcast in cloud: ${e.message}")
+            }
+        }
+        return true
+    }
+
+    fun deleteBroadcast(id: String): Boolean {
+        val currentList = _broadcasts.value.toMutableList()
+        val removed = currentList.removeAll { it.id == id }
+        if (removed) {
+            _broadcasts.value = currentList
+            persistBroadcasts()
+
+            scope.launch {
+                try {
+                    supabaseClient.deleteRecord("platform_broadcasts", "id", id)
+                } catch (e: Exception) {
+                    Log.e("PlatformRepository", "Error deleting broadcast in cloud: ${e.message}")
+                }
+            }
+        }
+        return removed
+    }
+
     fun getActiveBroadcastForOwner(plan: SaaSPlanType, isExpired: Boolean): PlatformBroadcast? {
         val list = _broadcasts.value
         if (list.isEmpty()) return null
+        val dismissed = _dismissedBroadcastIds.value
 
         return list.firstOrNull { bc ->
-            when (bc.targetAudience) {
-                "ALL" -> true
-                "FREE_ONLY" -> plan == SaaSPlanType.FREE && !isExpired
-                "PRO_ONLY" -> plan == SaaSPlanType.PREMIUM && !isExpired
-                "BUSINESS_ONLY" -> plan == SaaSPlanType.BUSINESS && !isExpired
-                "EXPIRED_ONLY" -> isExpired
-                else -> true
+            val dismissKey = bc.id + "_" + bc.timestamp
+            if (dismissed.contains(dismissKey) || dismissed.contains(bc.id)) {
+                false
+            } else {
+                when (bc.targetAudience) {
+                    "ALL" -> true
+                    "FREE_ONLY" -> plan == SaaSPlanType.FREE && !isExpired
+                    "PRO_ONLY" -> plan == SaaSPlanType.PREMIUM && !isExpired
+                    "BUSINESS_ONLY" -> plan == SaaSPlanType.BUSINESS && !isExpired
+                    "EXPIRED_ONLY" -> isExpired
+                    else -> true
+                }
             }
         }
     }
@@ -776,6 +844,8 @@ class PlatformRepository private constructor(private val context: Context?) {
             } else {
                 _broadcasts.value = generateDefaultBroadcasts()
             }
+
+            _dismissedBroadcastIds.value = prefs?.getStringSet("dismissed_broadcast_ids", emptySet()) ?: emptySet()
 
             // Load App Control
             val acJson = prefs?.getString("platform_app_control_json", null)

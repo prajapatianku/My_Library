@@ -55,8 +55,9 @@ fun DashboardScreen(
 
     val appControl by viewModel.platformAppControl.collectAsState()
     val broadcasts by viewModel.platformBroadcasts.collectAsState()
+    val dismissedBroadcasts by viewModel.platformRepository.dismissedBroadcastIds.collectAsState()
     val isSubExpired = daysRemaining == 0 && saasPlan.planType != com.example.data.model.SaaSPlanType.FREE
-    val activeBroadcast = remember(broadcasts, saasPlan, isSubExpired) {
+    val activeBroadcast = remember(broadcasts, saasPlan, isSubExpired, dismissedBroadcasts) {
         viewModel.platformRepository.getActiveBroadcastForOwner(saasPlan.planType, isSubExpired)
     }
 
@@ -98,7 +99,7 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Campaign, contentDescription = null, tint = AmberTertiary, modifier = Modifier.size(22.dp))
@@ -115,6 +116,19 @@ fun DashboardScreen(
                                 text = bc.message,
                                 color = PureWhite,
                                 fontSize = 11.sp
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                viewModel.platformRepository.dismissBroadcast(bc.id + "_" + bc.timestamp)
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close announcement",
+                                tint = PureWhite.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }

@@ -66,6 +66,8 @@ fun SuperAdminScreen(
     var showOwnerDetailDialog by remember { mutableStateOf<SavedLibraryAccount?>(null) }
     var showCreateCouponDialog by remember { mutableStateOf(false) }
     var showCreateBroadcastDialog by remember { mutableStateOf(false) }
+    var editingBroadcast by remember { mutableStateOf<PlatformBroadcast?>(null) }
+    var broadcastToDelete by remember { mutableStateOf<PlatformBroadcast?>(null) }
 
     Scaffold(
         topBar = {
@@ -183,7 +185,9 @@ fun SuperAdminScreen(
 
                 SuperAdminTab.BROADCASTS -> SuperAdminBroadcastsTab(
                     broadcasts = platformBroadcasts,
-                    onComposeBroadcastClick = { showCreateBroadcastDialog = true }
+                    onComposeBroadcastClick = { showCreateBroadcastDialog = true },
+                    onEditBroadcast = { editingBroadcast = it },
+                    onDeleteBroadcast = { broadcastToDelete = it }
                 )
 
                 SuperAdminTab.APP_CONTROL -> SuperAdminAppControlTab(
@@ -237,6 +241,43 @@ fun SuperAdminScreen(
             onSend = { title, msg, audience ->
                 viewModel.platformRepository.sendBroadcast(title, msg, audience)
                 showCreateBroadcastDialog = false
+            }
+        )
+    }
+
+    // Modal: Edit Broadcast
+    editingBroadcast?.let { bc ->
+        EditBroadcastModal(
+            broadcast = bc,
+            onDismiss = { editingBroadcast = null },
+            onUpdate = { title, msg, audience ->
+                viewModel.platformRepository.updateBroadcast(bc.id, title, msg, audience)
+                editingBroadcast = null
+            }
+        )
+    }
+
+    // Dialog: Confirm Delete Broadcast
+    broadcastToDelete?.let { bc ->
+        AlertDialog(
+            onDismissRequest = { broadcastToDelete = null },
+            title = { Text("Delete Broadcast?", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete '${bc.title}'? It will be removed immediately from all library owner dashboards.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.platformRepository.deleteBroadcast(bc.id)
+                        broadcastToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold, color = PureWhite)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { broadcastToDelete = null }) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -1026,7 +1067,9 @@ fun SuperAdminPricingTab(
 @Composable
 fun SuperAdminBroadcastsTab(
     broadcasts: List<PlatformBroadcast>,
-    onComposeBroadcastClick: () -> Unit
+    onComposeBroadcastClick: () -> Unit,
+    onEditBroadcast: (PlatformBroadcast) -> Unit,
+    onDeleteBroadcast: (PlatformBroadcast) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1102,7 +1145,28 @@ fun SuperAdminBroadcastsTab(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(bc.message, fontSize = 12.sp, color = WarmTextDark)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Sent on: ${bc.timestamp}", fontSize = 10.sp, color = WarmTextMuted)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Sent on: ${bc.timestamp}", fontSize = 10.sp, color = WarmTextMuted)
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(
+                                    onClick = { onEditBroadcast(bc) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = NavyPrimary, modifier = Modifier.size(16.dp))
+                                }
+                                IconButton(
+                                    onClick = { onDeleteBroadcast(bc) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = DangerRed, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1523,6 +1587,82 @@ fun CreateBroadcastModal(
                         colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
                     ) {
                         Text("Send Broadcast", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditBroadcastModal(
+    broadcast: PlatformBroadcast,
+    onDismiss: () -> Unit,
+    onUpdate: (String, String, String) -> Unit
+) {
+    var title by remember { mutableStateOf(broadcast.title) }
+    var message by remember { mutableStateOf(broadcast.message) }
+    var audience by remember { mutableStateOf(broadcast.targetAudience) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = PureWhite,
+            modifier = Modifier.fillMaxWidth(0.95f)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Edit Broadcast Announcement", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = NavyPrimary)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Announcement Title *") },
+                    singleLine = true,
+                    textStyle = AppInputTextStyle,
+                    colors = appOutlinedTextFieldColors(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    label = { Text("Message Content *") },
+                    maxLines = 4,
+                    textStyle = AppInputTextStyle,
+                    colors = appOutlinedTextFieldColors(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text("Target Audience:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("ALL", "FREE_ONLY", "PRO_ONLY", "EXPIRED_ONLY").forEach { aud ->
+                        FilterChip(
+                            selected = audience == aud,
+                            onClick = { audience = aud },
+                            label = { Text(aud.replace("_", " "), fontSize = 9.sp) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = { onUpdate(title, message, audience) },
+                        modifier = Modifier.weight(1.5f),
+                        enabled = title.isNotBlank() && message.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold)
                     }
                 }
             }

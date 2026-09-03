@@ -16,13 +16,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -83,6 +88,7 @@ fun LoginScreen(
     var isOtpSent by remember { mutableStateOf(false) }
     var otpMessageBanner by remember { mutableStateOf<String?>(null) }
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(true) }
 
     // --- Registration Stepper & Fields ---
     var regSection by remember { mutableStateOf(RegSection.PERSONAL_DETAILS) }
@@ -135,148 +141,118 @@ fun LoginScreen(
     var validationError by remember { mutableStateOf<String?>(null) }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SlateBackground)
+        modifier = modifier.fillMaxSize()
     ) {
+        // Mockup Ambient Library Background
+        Image(
+            painter = painterResource(id = com.example.R.drawable.bg_login_vidyara),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Brand Header
-            Box(
+            // Top Vidyara App Icon Badge (same logo as in mockup)
+            Image(
+                painter = painterResource(id = com.example.R.drawable.ic_vidyara_badge),
+                contentDescription = "Vidyara Logo Badge",
                 modifier = Modifier
-                    .height(130.dp)
-                    .width(180.dp)
-                    .clipToBounds(),
-                contentAlignment = Alignment.TopCenter
+                    .size(86.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(22.dp), spotColor = Color(0x330C2146))
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Vidyara Brand Name
+            Text(
+                text = "Vidyara",
+                fontSize = 42.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0C2146),
+                letterSpacing = (-0.5).sp
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Golden divider with open book icon
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.width(180.dp)
             ) {
-                Image(
-                    painter = painterResource(id = com.example.R.drawable.logo_vidyara),
-                    contentDescription = "Vidyara Logo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp),
-                    contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    thickness = 1.dp,
+                    color = Color(0xFFD49B35).copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Outlined.AutoStories,
+                    contentDescription = null,
+                    tint = Color(0xFFD49B35),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    thickness = 1.dp,
+                    color = Color(0xFFD49B35).copy(alpha = 0.8f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Main Auth Container
+            // Subtitle Tagline
+            Text(
+                text = "Complete Library Management,\nFrom One App",
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1E293B),
+                lineHeight = 16.sp
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Main Auth Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("auth_main_card"),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(containerColor = PureWhite),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF3ECE4))
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 26.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Top Auth Mode Switcher (Login vs Register)
-                    Surface(
-                        color = Color(0xFFFBF8F4),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFECE4D8)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(4.dp)
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        currentAuthMode = AuthMode.LOGIN
-                                        validationError = null
-                                    },
-                                color = if (currentAuthMode == AuthMode.LOGIN) OrangePrimary else Color.Transparent,
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Login,
-                                            contentDescription = null,
-                                            tint = if (currentAuthMode == AuthMode.LOGIN) PureWhite else WarmTextMuted,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Existing User (Login)",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            color = if (currentAuthMode == AuthMode.LOGIN) PureWhite else WarmTextMuted
-                                        )
-                                    }
-                                }
-                            }
-
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        currentAuthMode = AuthMode.REGISTER
-                                        validationError = null
-                                    },
-                                color = if (currentAuthMode == AuthMode.REGISTER) OrangePrimary else Color.Transparent,
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.PersonAdd,
-                                            contentDescription = null,
-                                            tint = if (currentAuthMode == AuthMode.REGISTER) PureWhite else WarmTextMuted,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "New User (Register)",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            color = if (currentAuthMode == AuthMode.REGISTER) PureWhite else WarmTextMuted
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
                     if (validationError != null) {
                         Surface(
                             color = Color(0xFFFEF2F2),
-                            shape = RoundedCornerShape(10.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF87171)),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF87171).copy(alpha = 0.5f)),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 14.dp)
+                                .padding(bottom = 16.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(10.dp),
+                                modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ErrorOutline,
+                                    imageVector = Icons.Outlined.ErrorOutline,
                                     contentDescription = null,
                                     tint = DangerRed,
                                     modifier = Modifier.size(18.dp)
@@ -286,148 +262,154 @@ fun LoginScreen(
                                     text = validationError ?: "",
                                     color = DangerRed,
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
                     }
 
-                    // -------------------------------------------------------------
-                    // 1. LOGIN MODE (Password or OTP)
-                    // -------------------------------------------------------------
+                    // 1. LOGIN MODE
                     if (currentAuthMode == AuthMode.LOGIN) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
                                 text = "Welcome Back!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Black,
-                                color = WarmTextDark
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Sign in to manage your library seats & students",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = WarmTextMuted
+                                text = "Login to manage your library",
+                                fontSize = 13.sp,
+                                color = Color(0xFF64748B)
                             )
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(18.dp))
 
-                            // Phone / Email Field
-                            OutlinedTextField(
-                                value = loginPhoneOrEmail,
-                                onValueChange = { loginPhoneOrEmail = it },
-                                label = { Text("Phone Number or Email *") },
-                                placeholder = { Text("email@example.com or phone") },
-                                textStyle = AppInputTextStyle,
-                                colors = appOutlinedTextFieldColors(),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.PhoneAndroid,
-                                        contentDescription = null,
-                                        tint = OrangePrimary
-                                    )
-                                },
-                                singleLine = true,
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("login_phone_input"),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
-                                    imeAction = ImeAction.Next
-                                )
-                            )
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Login Method Selector: Password vs OTP
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            // Pill Selector: Password vs Email OTP
+                            Surface(
+                                color = Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                FilterChip(
-                                    selected = loginMethod == LoginMethod.PASSWORD,
-                                    onClick = {
-                                        loginMethod = LoginMethod.PASSWORD
-                                        validationError = null
-                                    },
-                                    label = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Login with Password", fontSize = 12.sp)
-                                        }
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = OrangePrimaryContainer,
-                                        selectedLabelColor = OrangePrimaryDark,
-                                        containerColor = PureWhite
-                                    ),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
-                                        selected = loginMethod == LoginMethod.PASSWORD,
-                                        borderColor = if (loginMethod == LoginMethod.PASSWORD) OrangePrimary else Color(0xFFE5DECE)
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Row(modifier = Modifier.padding(3.dp)) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                loginMethod = LoginMethod.PASSWORD
+                                                validationError = null
+                                            },
+                                        color = if (loginMethod == LoginMethod.PASSWORD) PureWhite else Color.Transparent,
+                                        shape = RoundedCornerShape(9.dp),
+                                        shadowElevation = if (loginMethod == LoginMethod.PASSWORD) 2.dp else 0.dp
+                                    ) {
+                                        Text(
+                                            text = "Password Login",
+                                            fontSize = 12.sp,
+                                            fontWeight = if (loginMethod == LoginMethod.PASSWORD) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (loginMethod == LoginMethod.PASSWORD) Color(0xFF0F172A) else Color(0xFF64748B),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        )
+                                    }
 
-                                FilterChip(
-                                    selected = loginMethod == LoginMethod.OTP,
-                                    onClick = {
-                                        loginMethod = LoginMethod.OTP
-                                        validationError = null
-                                    },
-                                    label = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Sms, contentDescription = null, modifier = Modifier.size(14.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Login with OTP", fontSize = 12.sp)
-                                        }
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = OrangePrimaryContainer,
-                                        selectedLabelColor = OrangePrimaryDark,
-                                        containerColor = PureWhite
-                                    ),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
-                                        selected = loginMethod == LoginMethod.OTP,
-                                        borderColor = if (loginMethod == LoginMethod.OTP) OrangePrimary else Color(0xFFE5DECE)
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                loginMethod = LoginMethod.OTP
+                                                validationError = null
+                                            },
+                                        color = if (loginMethod == LoginMethod.OTP) PureWhite else Color.Transparent,
+                                        shape = RoundedCornerShape(9.dp),
+                                        shadowElevation = if (loginMethod == LoginMethod.OTP) 2.dp else 0.dp
+                                    ) {
+                                        Text(
+                                            text = "Email OTP",
+                                            fontSize = 12.sp,
+                                            fontWeight = if (loginMethod == LoginMethod.OTP) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (loginMethod == LoginMethod.OTP) Color(0xFF0F172A) else Color(0xFF64748B),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        )
+                                    }
+                                }
                             }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(18.dp))
 
-                            // Method 1: Password Login
+                            // METHOD 1: PASSWORD LOGIN (Exact match to Mockup!)
                             if (loginMethod == LoginMethod.PASSWORD) {
+                                // Field 1: Email or Username
+                                OutlinedTextField(
+                                    value = loginPhoneOrEmail,
+                                    onValueChange = { loginPhoneOrEmail = it },
+                                    placeholder = { Text("Email or Username", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Mail,
+                                            contentDescription = null,
+                                            tint = Color(0xFF0066FF),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color(0xFF0066FF),
+                                        unfocusedBorderColor = Color(0xFFE2E8F0),
+                                        focusedContainerColor = PureWhite,
+                                        unfocusedContainerColor = PureWhite
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("login_phone_input"),
+                                    textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Email,
+                                        imeAction = ImeAction.Next
+                                    )
+                                )
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                // Field 2: Password
                                 OutlinedTextField(
                                     value = loginPassword,
                                     onValueChange = { loginPassword = it },
-                                    label = { Text("Password *") },
-                                    textStyle = AppInputTextStyle,
-                                    colors = appOutlinedTextFieldColors(),
+                                    placeholder = { Text("Password", color = Color(0xFF94A3B8), fontSize = 14.sp) },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.Default.Lock,
+                                            imageVector = Icons.Outlined.Lock,
                                             contentDescription = null,
-                                            tint = OrangePrimary
+                                            tint = Color(0xFF0066FF),
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     },
                                     trailingIcon = {
                                         IconButton(onClick = { isLoginPasswordVisible = !isLoginPasswordVisible }) {
                                             Icon(
-                                                imageVector = if (isLoginPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                                contentDescription = "Toggle password"
+                                                imageVector = if (isLoginPasswordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                                                contentDescription = "Toggle password",
+                                                tint = Color(0xFF94A3B8),
+                                                modifier = Modifier.size(20.dp)
                                             )
                                         }
                                     },
                                     visualTransformation = if (isLoginPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     singleLine = true,
                                     shape = RoundedCornerShape(14.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color(0xFF0066FF),
+                                        unfocusedBorderColor = Color(0xFFE2E8F0),
+                                        focusedContainerColor = PureWhite,
+                                        unfocusedContainerColor = PureWhite
+                                    ),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .testTag("login_password_input"),
+                                    textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium),
                                     keyboardOptions = KeyboardOptions(
                                         keyboardType = KeyboardType.Password,
                                         imeAction = ImeAction.Done
@@ -437,61 +419,121 @@ fun LoginScreen(
                                             if (loginPhoneOrEmail.isNotBlank()) {
                                                 viewModel.loginWithPassword(loginPhoneOrEmail, loginPassword)
                                             } else {
-                                                validationError = "Please enter your Phone Number or Email."
+                                                validationError = "Please enter your Email or Username."
                                             }
                                         }
                                     )
                                 )
 
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                // Remember me & Forgot Password Row
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    TextButton(
-                                        onClick = { showForgotPasswordDialog = true },
-                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.clickable { rememberMe = !rememberMe }
                                     ) {
+                                        Checkbox(
+                                            checked = rememberMe,
+                                            onCheckedChange = { rememberMe = it },
+                                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0066FF))
+                                        )
                                         Text(
-                                            text = "Forgot Password?",
-                                            color = OrangePrimaryDark,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp
+                                            text = "Remember me",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF334155),
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
+
+                                    Text(
+                                        text = "Forgot Password?",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF0066FF),
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.clickable { showForgotPasswordDialog = true }
+                                    )
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(18.dp))
 
+                                // Login Button (Royal Blue with Arrow Forward)
                                 Button(
                                     onClick = {
-                                        if (loginPhoneOrEmail.isBlank()) {
-                                            validationError = "Please enter your Phone Number or Email."
+                                        if (loginPhoneOrEmail.isBlank() || loginPassword.isBlank()) {
+                                            validationError = "Please enter both Email/Username and Password."
                                         } else {
                                             viewModel.loginWithPassword(loginPhoneOrEmail, loginPassword)
                                         }
                                     },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(50.dp)
+                                        .height(52.dp)
                                         .testTag("login_submit_button"),
                                     shape = RoundedCornerShape(14.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = OrangePrimary,
+                                        containerColor = Color(0xFF0066FF),
                                         contentColor = PureWhite
-                                    )
+                                    ),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                                 ) {
-                                    Icon(imageVector = Icons.Default.Login, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Sign In with Password",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = "Login",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             } else {
-                                // Method 2: OTP Login (SMS / Email Firebase)
+                                // METHOD 2: EMAIL OTP LOGIN
                                 val isEmailInput = loginPhoneOrEmail.contains("@")
                                 Column(modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = loginPhoneOrEmail,
+                                        onValueChange = { loginPhoneOrEmail = it },
+                                        placeholder = { Text("Registered Email or Phone", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Mail,
+                                                contentDescription = null,
+                                                tint = Color(0xFF0066FF),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Color(0xFF0066FF),
+                                            unfocusedBorderColor = Color(0xFFE2E8F0),
+                                            focusedContainerColor = PureWhite,
+                                            unfocusedContainerColor = PureWhite
+                                        ),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("login_phone_input"),
+                                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Email,
+                                            imeAction = ImeAction.Next
+                                        )
+                                    )
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
                                     if (!isOtpSent) {
                                         Button(
                                             onClick = {
@@ -505,20 +547,28 @@ fun LoginScreen(
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(50.dp)
+                                                .height(52.dp)
                                                 .testTag("send_otp_button"),
                                             shape = RoundedCornerShape(14.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = OrangePrimary,
+                                                containerColor = Color(0xFF0066FF),
                                                 contentColor = PureWhite
-                                            )
+                                            ),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Get Verification OTP", fontWeight = FontWeight.Bold)
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(imageVector = Icons.Outlined.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Get Verification OTP", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            }
                                         }
                                     } else {
-                                        // OTP Banner notification (No on-screen code!)
+                                        // OTP Dispatched notification banner
                                         Surface(
                                             color = Color(0xFFEFF6FF),
                                             shape = RoundedCornerShape(12.dp),
@@ -529,17 +579,17 @@ fun LoginScreen(
                                                 modifier = Modifier.padding(12.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Icon(Icons.Default.MarkEmailRead, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                                                Icon(Icons.Outlined.MarkEmailRead, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
                                                 Spacer(modifier = Modifier.width(10.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
-                                                        text = if (isEmailInput) "Email OTP Dispatched" else "SMS OTP Dispatched",
+                                                        text = "OTP Dispatched to Email",
                                                         fontWeight = FontWeight.Bold,
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF1E3A8A)
                                                     )
                                                     Text(
-                                                        text = otpMessageBanner ?: "Please check your inbox at $loginPhoneOrEmail (including Spam folder).",
+                                                        text = otpMessageBanner ?: "Please check your inbox (including Spam folder).",
                                                         fontSize = 11.sp,
                                                         color = Color(0xFF1E40AF)
                                                     )
@@ -552,22 +602,27 @@ fun LoginScreen(
                                         OutlinedTextField(
                                             value = enteredOtp,
                                             onValueChange = { if (it.length <= 6) enteredOtp = it },
-                                            label = { Text("Enter 6-Digit OTP *") },
-                                            placeholder = { Text("e.g. 582910") },
-                                            textStyle = AppInputTextStyle,
-                                            colors = appOutlinedTextFieldColors(),
+                                            placeholder = { Text("Enter 6-Digit OTP", color = Color(0xFF94A3B8), fontSize = 14.sp) },
                                             leadingIcon = {
                                                 Icon(
-                                                    imageVector = Icons.Default.Pin,
+                                                    imageVector = Icons.Outlined.Key,
                                                     contentDescription = null,
-                                                    tint = OrangePrimary
+                                                    tint = Color(0xFF0066FF),
+                                                    modifier = Modifier.size(20.dp)
                                                 )
                                             },
                                             singleLine = true,
                                             shape = RoundedCornerShape(14.dp),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = Color(0xFF0066FF),
+                                                unfocusedBorderColor = Color(0xFFE2E8F0),
+                                                focusedContainerColor = PureWhite,
+                                                unfocusedContainerColor = PureWhite
+                                            ),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .testTag("otp_input_field"),
+                                            textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium),
                                             keyboardOptions = KeyboardOptions(
                                                 keyboardType = KeyboardType.Number,
                                                 imeAction = ImeAction.Done
@@ -592,15 +647,15 @@ fun LoginScreen(
                                             Text(
                                                 text = "Didn't receive OTP?",
                                                 fontSize = 12.sp,
-                                                color = WarmTextMuted
+                                                color = Color(0xFF64748B)
                                             )
                                             TextButton(
                                                 onClick = {
                                                     val generatedCode = viewModel.sendOtp(loginPhoneOrEmail)
-                                                    otpMessageBanner = "New OTP sent to $loginPhoneOrEmail: $generatedCode"
+                                                    otpMessageBanner = "New OTP sent to your registered email."
                                                 }
                                             ) {
-                                                Text("Resend Code", color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                Text("Resend Code", color = Color(0xFF0066FF), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                             }
                                         }
 
@@ -617,17 +672,23 @@ fun LoginScreen(
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(50.dp)
+                                                .height(52.dp)
                                                 .testTag("verify_otp_button"),
                                             shape = RoundedCornerShape(14.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = OrangePrimary,
+                                                containerColor = Color(0xFF0066FF),
                                                 contentColor = PureWhite
-                                            )
+                                            ),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.VerifiedUser, contentDescription = null)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Verify OTP & Sign In", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(imageVector = Icons.Outlined.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Verify OTP & Sign In", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                            }
                                         }
                                     }
                                 }
@@ -1481,28 +1542,72 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
-            // Footer note
+            // Bottom Prompt: Don't have an account? Sign Up
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (currentAuthMode == AuthMode.LOGIN) {
+                    Text(
+                        text = "Don't have an account? ",
+                        color = Color(0xFF64748B),
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Sign Up",
+                        color = Color(0xFF0066FF),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            currentAuthMode = AuthMode.REGISTER
+                            validationError = null
+                        }
+                    )
+                } else {
+                    Text(
+                        text = "Already have an account? ",
+                        color = Color(0xFF64748B),
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Log In",
+                        color = Color(0xFF0066FF),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            currentAuthMode = AuthMode.LOGIN
+                            validationError = null
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Discreet Super Admin link
+            TextButton(
+                onClick = onOpenSuperAdmin,
+                modifier = Modifier.testTag("super_admin_button")
             ) {
                 Icon(
-                    imageVector = Icons.Default.Security,
+                    imageVector = Icons.Outlined.Shield,
                     contentDescription = null,
-                    tint = WarmTextMuted,
-                    modifier = Modifier.size(14.dp)
+                    tint = Color(0xFF64748B),
+                    modifier = Modifier.size(15.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "End-to-End Encrypted Cloud Attendance & Library Data",
-                    fontSize = 11.sp,
-                    color = WarmTextMuted
+                    text = "Super Admin Portal",
+                    color = Color(0xFF64748B),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 

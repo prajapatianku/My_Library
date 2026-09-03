@@ -302,18 +302,68 @@ fun MainApp(
                     fontSize = 13.sp,
                     color = WarmTextMuted
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:+919876543210"))
-                        context.startActivity(intent)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
-                    shape = RoundedCornerShape(12.dp)
+                Spacer(modifier = Modifier.height(20.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF8FAFC),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                 ) {
-                    Icon(Icons.Default.Phone, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Contact Platform Support", fontWeight = FontWeight.Bold)
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Platform Administrator Contact:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = WarmTextDark)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Phone, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("+91 8709489716", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = WarmTextDark)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Email, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("ratneshankit123@gmail.com", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = WarmTextDark)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:8709489716"))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Call Admin", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:ratneshankit123@gmail.com?subject=Account%20Reactivation%20Request"))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Email Admin", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { viewModel.logout() },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Log Out & Switch Account", fontWeight = FontWeight.Bold)
                 }
             }
         }

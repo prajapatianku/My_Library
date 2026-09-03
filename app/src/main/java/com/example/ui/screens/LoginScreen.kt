@@ -82,6 +82,7 @@ fun LoginScreen(
     var enteredOtp by remember { mutableStateOf("") }
     var isOtpSent by remember { mutableStateOf(false) }
     var otpMessageBanner by remember { mutableStateOf<String?>(null) }
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
 
     // --- Registration Stepper & Fields ---
     var regSection by remember { mutableStateOf(RegSection.PERSONAL_DETAILS) }
@@ -442,7 +443,24 @@ fun LoginScreen(
                                     )
                                 )
 
-                                Spacer(modifier = Modifier.height(18.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(
+                                        onClick = { showForgotPasswordDialog = true },
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "Forgot Password?",
+                                            color = OrangePrimaryDark,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
 
                                 Button(
                                     onClick = {
@@ -471,15 +489,16 @@ fun LoginScreen(
                                     )
                                 }
                             } else {
-                                // Method 2: OTP Login
+                                // Method 2: OTP Login (SMS / Email Firebase)
+                                val isEmailInput = loginPhoneOrEmail.contains("@")
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     if (!isOtpSent) {
                                         Button(
                                             onClick = {
                                                 if (loginPhoneOrEmail.isBlank()) {
-                                                    validationError = "Please enter your phone number first."
+                                                    validationError = "Please enter your Phone Number or Email first."
                                                 } else {
-                                                    val generatedCode = viewModel.sendOtp(loginPhoneOrEmail)
+                                                    val generatedCode = viewModel.sendOtp(loginPhoneOrEmail, isEmailInput)
                                                     isOtpSent = true
                                                     otpMessageBanner = "Verification code sent to $loginPhoneOrEmail: $generatedCode"
                                                 }
@@ -494,9 +513,9 @@ fun LoginScreen(
                                                 contentColor = PureWhite
                                             )
                                         ) {
-                                            Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Icon(imageVector = if (isEmailInput) Icons.Default.Email else Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Get Verification OTP", fontWeight = FontWeight.Bold)
+                                            Text(if (isEmailInput) "Get Email OTP (via Firebase)" else "Get Verification OTP", fontWeight = FontWeight.Bold)
                                         }
                                     } else {
                                         // OTP Banner notification
@@ -513,7 +532,7 @@ fun LoginScreen(
                                             ) {
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
-                                                        text = "SMS OTP Dispatched",
+                                                        text = if (isEmailInput) "Email OTP Dispatched" else "SMS OTP Dispatched",
                                                         fontWeight = FontWeight.Bold,
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF065F46)
@@ -1498,6 +1517,20 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+
+    if (showForgotPasswordDialog) {
+        ForgotPasswordDialog(
+            initialIdentifier = loginPhoneOrEmail,
+            viewModel = viewModel,
+            onDismiss = { showForgotPasswordDialog = false },
+            onSuccessReset = { updatedIdentifier, updatedPassword ->
+                showForgotPasswordDialog = false
+                loginPhoneOrEmail = updatedIdentifier
+                loginPassword = updatedPassword
+                loginMethod = LoginMethod.PASSWORD
+            }
+        )
+    }
 }
 
 @Composable
@@ -1599,4 +1632,335 @@ private fun validateLibraryDetails(name: String, address: String, location: Stri
     if (address.isBlank()) return "Please enter Library Address."
     if (location.isBlank()) return "Please enter Library Location / City."
     return null
+}
+
+@Composable
+fun ForgotPasswordDialog(
+    initialIdentifier: String,
+    viewModel: LibraryViewModel,
+    onDismiss: () -> Unit,
+    onSuccessReset: (String, String) -> Unit
+) {
+    var step by remember { mutableStateOf(1) } // 1: Input & Delivery, 2: Enter OTP, 3: Set Password
+    var identifier by remember { mutableStateOf(initialIdentifier) }
+    var preferEmail by remember { mutableStateOf(initialIdentifier.contains("@")) }
+    var enteredOtp by remember { mutableStateOf("") }
+    var generatedOtpBanner by remember { mutableStateOf<String?>(null) }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var isNewPasswordVisible by remember { mutableStateOf(false) }
+    var isConfirmPasswordVisible by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var destinationDisplay by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = when (step) {
+                        1 -> Icons.Default.Lock
+                        2 -> Icons.Default.Email
+                        else -> Icons.Default.Key
+                    },
+                    contentDescription = null,
+                    tint = OrangePrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = when (step) {
+                        1 -> "Reset Password"
+                        2 -> "Enter Verification OTP"
+                        else -> "Set New Password"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = WarmTextDark
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                errorMessage?.let { err ->
+                    Surface(
+                        color = Color(0xFFFEE2E2),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = err,
+                            color = DangerRed,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                }
+
+                when (step) {
+                    1 -> {
+                        Text(
+                            "Enter your registered phone number or email address. We'll send an OTP to verify your identity.",
+                            fontSize = 12.sp,
+                            color = WarmTextMuted
+                        )
+
+                        OutlinedTextField(
+                            value = identifier,
+                            onValueChange = {
+                                identifier = it
+                                errorMessage = null
+                                if (it.contains("@")) preferEmail = true
+                            },
+                            label = { Text("Registered Phone or Email *") },
+                            leadingIcon = {
+                                Icon(
+                                    if (preferEmail) Icons.Default.Email else Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = OrangePrimary
+                                )
+                            },
+                            singleLine = true,
+                            textStyle = AppInputTextStyle,
+                            colors = appOutlinedTextFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text("Send Verification Code via:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = WarmTextDark)
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = preferEmail,
+                                onClick = { preferEmail = true },
+                                label = { Text("✉️ Email (Firebase)", fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            FilterChip(
+                                selected = !preferEmail,
+                                onClick = { preferEmail = false },
+                                label = { Text("📱 Phone (SMS)", fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+                    }
+
+                    2 -> {
+                        generatedOtpBanner?.let { banner ->
+                            Surface(
+                                color = Color(0xFFECFDF5),
+                                shape = RoundedCornerShape(10.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = "Verification Code Dispatched",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF065F46)
+                                    )
+                                    Text(
+                                        text = banner,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF047857)
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            "Enter the 6-digit code sent to $destinationDisplay:",
+                            fontSize = 12.sp,
+                            color = WarmTextDark
+                        )
+
+                        OutlinedTextField(
+                            value = enteredOtp,
+                            onValueChange = {
+                                if (it.length <= 6) {
+                                    enteredOtp = it
+                                    errorMessage = null
+                                }
+                            },
+                            label = { Text("6-Digit OTP Code *") },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = OrangePrimary) },
+                            textStyle = AppInputTextStyle.copy(fontWeight = FontWeight.Black, letterSpacing = 4.sp),
+                            colors = appOutlinedTextFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    val (success, msg, code) = viewModel.sendPasswordResetOtp(identifier, preferEmail)
+                                    if (success) {
+                                        generatedOtpBanner = "New code: $code sent to $destinationDisplay"
+                                    } else {
+                                        errorMessage = msg
+                                    }
+                                }
+                            ) {
+                                Text("Resend Code", fontSize = 11.sp, color = OrangePrimaryDark, fontWeight = FontWeight.Bold)
+                            }
+
+                            Text("Valid for 10 mins", fontSize = 10.sp, color = WarmTextMuted)
+                        }
+                    }
+
+                    3 -> {
+                        Text(
+                            "Create a new password for your library portal.",
+                            fontSize = 12.sp,
+                            color = WarmTextMuted
+                        )
+
+                        OutlinedTextField(
+                            value = newPassword,
+                            onValueChange = {
+                                newPassword = it
+                                errorMessage = null
+                            },
+                            label = { Text("New Password *") },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = OrangePrimary) },
+                            trailingIcon = {
+                                IconButton(onClick = { isNewPasswordVisible = !isNewPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (isNewPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (isNewPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            textStyle = AppInputTextStyle,
+                            colors = appOutlinedTextFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = {
+                                confirmPassword = it
+                                errorMessage = null
+                            },
+                            label = { Text("Confirm New Password *") },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = OrangePrimary) },
+                            trailingIcon = {
+                                IconButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (isConfirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            textStyle = AppInputTextStyle,
+                            colors = appOutlinedTextFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    when (step) {
+                        1 -> {
+                            if (identifier.isBlank()) {
+                                errorMessage = "Please enter your registered phone number or email."
+                                return@Button
+                            }
+                            val (success, msg, code) = viewModel.sendPasswordResetOtp(identifier, preferEmail)
+                            if (success) {
+                                destinationDisplay = if (preferEmail && identifier.contains("@")) identifier else "your registered contact"
+                                generatedOtpBanner = "Verification code: $code"
+                                step = 2
+                                errorMessage = null
+                            } else {
+                                errorMessage = msg
+                            }
+                        }
+                        2 -> {
+                            if (enteredOtp.isBlank()) {
+                                errorMessage = "Please enter the 6-digit OTP code."
+                                return@Button
+                            }
+                            val (success, msg) = viewModel.verifyPasswordResetOtp(enteredOtp)
+                            if (success) {
+                                step = 3
+                                errorMessage = null
+                            } else {
+                                errorMessage = msg
+                            }
+                        }
+                        3 -> {
+                            if (newPassword.isBlank()) {
+                                errorMessage = "Please enter a new password."
+                                return@Button
+                            }
+                            if (newPassword.length < 4) {
+                                errorMessage = "Password must be at least 4 characters."
+                                return@Button
+                            }
+                            if (newPassword != confirmPassword) {
+                                errorMessage = "Passwords do not match."
+                                return@Button
+                            }
+                            val (success, msg) = viewModel.resetAccountPassword(newPassword)
+                            if (success) {
+                                onSuccessReset(identifier, newPassword)
+                            } else {
+                                errorMessage = msg
+                            }
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(
+                    text = when (step) {
+                        1 -> "Send OTP Code"
+                        2 -> "Verify OTP"
+                        else -> "Save & Update Password"
+                    },
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = {
+                    if (step > 1) {
+                        step -= 1
+                        errorMessage = null
+                    } else {
+                        onDismiss()
+                    }
+                },
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(if (step > 1) "Back" else "Cancel")
+            }
+        }
+    )
 }

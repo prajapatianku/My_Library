@@ -903,27 +903,45 @@ class LibraryViewModel(
         return success
     }
 
-    fun sendOtp(phone: String): String {
-        val otp = repository.sendOtp(phone)
-        _uiToastMessage.value = "OTP sent to $phone: $otp"
+    fun sendOtp(identifier: String, viaEmail: Boolean = false): String {
+        val otp = repository.sendOtp(identifier, viaEmail)
+        _uiToastMessage.value = "OTP sent to $identifier: $otp"
         return otp
     }
 
-    fun verifyOtpAndLogin(phone: String, otp: String): Boolean {
+    fun verifyOtpAndLogin(identifier: String, otp: String): Boolean {
         // Secret Super Admin Authentication check (Invisible to normal users)
-        if (platformRepository.isSuperAdminCredentials(phone, otp)) {
+        if (platformRepository.isSuperAdminCredentials(identifier, otp)) {
             platformRepository.authenticateSuperAdminDirectly()
             _uiToastMessage.value = "👑 Welcome back, Platform Administrator!"
             return true
         }
 
-        val success = repository.verifyOtpAndLogin(phone, otp)
+        val success = repository.verifyOtpAndLogin(identifier, otp)
         if (success) {
             _uiToastMessage.value = "OTP Verified! Welcome to your Library portal."
         } else {
-            _uiToastMessage.value = "Invalid OTP code. Please enter the 4-digit OTP."
+            _uiToastMessage.value = "Invalid OTP code. Please enter the valid OTP code."
         }
         return success
+    }
+
+    fun sendPasswordResetOtp(identifier: String, preferEmail: Boolean = false): Triple<Boolean, String, String> {
+        val res = repository.sendPasswordResetOtp(identifier, preferEmail)
+        _uiToastMessage.value = res.second
+        return res
+    }
+
+    fun verifyPasswordResetOtp(enteredOtp: String): Pair<Boolean, String> {
+        val res = repository.verifyPasswordResetOtp(enteredOtp)
+        _uiToastMessage.value = res.second
+        return res
+    }
+
+    fun resetAccountPassword(newPassword: String): Pair<Boolean, String> {
+        val res = repository.resetAccountPassword(newPassword)
+        _uiToastMessage.value = res.second
+        return res
     }
 
     fun loginWithPassword(phoneOrEmail: String, password: String): Boolean {

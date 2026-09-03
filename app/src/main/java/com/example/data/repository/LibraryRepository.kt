@@ -1,6 +1,7 @@
 package com.example.data.repository
 
 import com.example.LibraryApp
+import com.example.MainActivity
 import com.example.data.model.*
 import com.example.data.supabase.SupabaseApiClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -194,6 +195,34 @@ class LibraryRepository(
                     ownerName = "Library Owner"
                 )
             }
+        } else {
+            // SMS OTP via Firebase Phone Auth
+            val activity = MainActivity.currentActivity
+            com.example.data.auth.FirebasePhoneAuthService.sendSmsOtp(
+                activity = activity,
+                phoneNumber = identifier,
+                onCodeSent = { vId ->
+                    android.util.Log.i("LibraryRepository", "Firebase SMS code dispatched with verificationId: $vId")
+                },
+                onAutoVerified = { autoCode ->
+                    _lastGeneratedOtp.value = autoCode
+                },
+                onError = { err ->
+                    android.util.Log.e("LibraryRepository", "Firebase SMS error: $err")
+                }
+            )
+
+            // Dual delivery: also dispatch to registered email if account has an email
+            val matchedAccount = storage.findAccount(identifier)
+            if (matchedAccount != null && matchedAccount.ownerProfile.email.isNotBlank()) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    com.example.data.auth.EmailSenderService.sendOtpEmail(
+                        recipientEmail = matchedAccount.ownerProfile.email,
+                        otpCode = randomOtp,
+                        ownerName = matchedAccount.ownerProfile.fullName
+                    )
+                }
+            }
         }
         addAuditLog("OTP Dispatched", "Auth", "One-time code sent to $identifier via ${if (isEmail) "Email" else "SMS"}")
         return randomOtp
@@ -202,17 +231,32 @@ class LibraryRepository(
     fun verifyOtpAndLogin(identifier: String, enteredOtp: String): Boolean {
         val validOtp = _lastGeneratedOtp.value ?: "1234"
         val trimmedOtp = enteredOtp.trim()
-        if (trimmedOtp == validOtp || trimmedOtp == "1234" || trimmedOtp == "123456" || trimmedOtp == "0000" || trimmedOtp == "000000") {
-            var existingAccount = storage.findAccount(identifier)
-            if (existingAccount == null) {
-                existingAccount = fetchCloudAccount(identifier)
+        val isMatch = (validOtp.isNotBlank() && trimmedOtp == validOtp) ||
+                      (trimmedOtp == "1234" || trimmedOtp == "123456" || trimmedOtp == "0000" || trimmedOtp == "000000") ||
+                      (com.example.data.auth.FirebasePhoneAuthService.latestAutoSmsCode == trimmedOtp)
+
+        if (!isMatch) {
+            // Check Firebase Phone Auth Credential
+            var fbSuccess = false
+            val latch = java.util.concurrent.CountDownLatch(1)
+            com.example.data.auth.FirebasePhoneAuthService.verifySmsOtp(trimmedOtp) { ok, _ ->
+                fbSuccess = ok
+                latch.countDown()
             }
-            if (existingAccount != null) {
-                storage.saveAccount(existingAccount)
-                loadAccountState(existingAccount)
-            } else {
-                val isEmail = identifier.contains("@")
-                val newAccId = "acc_${System.currentTimeMillis()}"
+            try { latch.await(2, java.util.concurrent.TimeUnit.SECONDS) } catch (_: Exception) {}
+            if (!fbSuccess) return false
+        }
+
+        var existingAccount = storage.findAccount(identifier)
+        if (existingAccount == null) {
+            existingAccount = fetchCloudAccount(identifier)
+        }
+        if (existingAccount != null) {
+            storage.saveAccount(existingAccount)
+            loadAccountState(existingAccount)
+        } else {
+            val isEmail = identifier.contains("@")
+            val newAccId = "acc_${System.currentTimeMillis()}"
                 val newOwner = OwnerProfile(
                     userId = newAccId,
                     fullName = "Library Owner",
@@ -254,8 +298,6 @@ class LibraryRepository(
             _lastGeneratedOtp.value = null
             addAuditLog("Admin Logged In (OTP)", "Auth", "Owner logged in via OTP verification")
             return true
-        }
-        return false
     }
 
     fun sendPasswordResetOtp(identifier: String, preferEmail: Boolean = false): Triple<Boolean, String, String> {
@@ -301,6 +343,30 @@ class LibraryRepository(
                     ownerName = account.ownerProfile.fullName
                 )
             }
+        } else if (!isEmail && destination.isNotBlank()) {
+            // SMS OTP via Firebase Phone Auth
+            val activity = MainActivity.currentActivity
+            com.example.data.auth.FirebasePhoneAuthService.sendSmsOtp(
+                activity = activity,
+                phoneNumber = destination,
+                onCodeSent = { vId ->
+                    android.util.Log.i("LibraryRepository", "Firebase SMS code dispatched for reset: $vId")
+                },
+                onError = { err ->
+                    android.util.Log.e("LibraryRepository", "Firebase SMS reset error: $err")
+                }
+            )
+
+            // Dual delivery: also dispatch to registered email if account has an email
+            if (account.ownerProfile.email.isNotBlank()) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    com.example.data.auth.EmailSenderService.sendOtpEmail(
+                        recipientEmail = account.ownerProfile.email,
+                        otpCode = otp,
+                        ownerName = account.ownerProfile.fullName
+                    )
+                }
+            }
         }
 
         addAuditLog("Password Reset OTP", "Auth", "Reset code dispatched to $destination")
@@ -314,7 +380,22 @@ class LibraryRepository(
             return Pair(false, "OTP has expired. Please request a new verification code.")
         }
         val trimmedOtp = enteredOtp.trim()
-        if (trimmedOtp == session.otp || trimmedOtp == "123456" || trimmedOtp == "000000") {
+        val isMatch = (trimmedOtp == session.otp || trimmedOtp == "123456" || trimmedOtp == "000000") ||
+                      (com.example.data.auth.FirebasePhoneAuthService.latestAutoSmsCode == trimmedOtp)
+
+        if (isMatch) {
+            return Pair(true, "Code verified successfully!")
+        }
+
+        // Try Firebase Phone Auth verify
+        var fbSuccess = false
+        val latch = java.util.concurrent.CountDownLatch(1)
+        com.example.data.auth.FirebasePhoneAuthService.verifySmsOtp(trimmedOtp) { ok, _ ->
+            fbSuccess = ok
+            latch.countDown()
+        }
+        try { latch.await(2, java.util.concurrent.TimeUnit.SECONDS) } catch (_: Exception) {}
+        if (fbSuccess) {
             return Pair(true, "Code verified successfully!")
         }
         return Pair(false, "Invalid verification code. Please check and try again.")

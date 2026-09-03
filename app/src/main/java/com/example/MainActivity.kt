@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
     }
 
     companion object {
+        var currentActivity: MainActivity? = null
         var pendingUpgradePlan: SaaSPlanType? = null
         var pendingUpgradePeriod: BillingPeriod? = null
         var pendingBranchCount: Int = 1
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        currentActivity = this
         com.razorpay.Checkout.preload(applicationContext)
         enableEdgeToEdge()
         setContent {
@@ -71,6 +73,11 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultListener {
                 MainApp(viewModel = viewModel)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (currentActivity == this) currentActivity = null
     }
 
     fun startSaaSPayment(

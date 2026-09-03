@@ -99,15 +99,14 @@ fun DashboardScreen(
                         painter = painterResource(id = R.drawable.ic_vidyara_header_logo),
                         contentDescription = "Vidyara",
                         modifier = Modifier
-                            .height(34.dp)
-                            .width(128.dp)
+                            .height(32.dp)
+                            .width(140.dp)
                     )
 
                     // Right: Notification Bell in Navy with royal blue notification dot
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(CircleShape)
                             .clickable { showNotificationCenter = true },
                         contentAlignment = Alignment.Center
                     ) {
@@ -120,8 +119,9 @@ fun DashboardScreen(
                         if (unreadNotificationsCount > 0) {
                             Box(
                                 modifier = Modifier
-                                    .size(9.dp)
                                     .align(Alignment.TopEnd)
+                                    .offset(x = (-4).dp, y = 4.dp)
+                                    .size(9.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFF0066FF))
                             )

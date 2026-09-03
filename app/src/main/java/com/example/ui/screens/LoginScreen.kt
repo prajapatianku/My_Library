@@ -315,7 +315,7 @@ fun LoginScreen(
                                 value = loginPhoneOrEmail,
                                 onValueChange = { loginPhoneOrEmail = it },
                                 label = { Text("Phone Number or Email *") },
-                                placeholder = { Text("+91 9876543210") },
+                                placeholder = { Text("email@example.com or phone") },
                                 textStyle = AppInputTextStyle,
                                 colors = appOutlinedTextFieldColors(),
                                 leadingIcon = {
@@ -331,7 +331,7 @@ fun LoginScreen(
                                     .fillMaxWidth()
                                     .testTag("login_phone_input"),
                                 keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Phone,
+                                    keyboardType = KeyboardType.Email,
                                     imeAction = ImeAction.Next
                                 )
                             )

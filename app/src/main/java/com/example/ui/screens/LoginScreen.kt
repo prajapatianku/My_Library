@@ -500,7 +500,7 @@ fun LoginScreen(
                                                 } else {
                                                     viewModel.sendOtp(loginPhoneOrEmail, isEmailInput)
                                                     isOtpSent = true
-                                                    otpMessageBanner = if (isEmailInput) "A verification code has been dispatched to your email ($loginPhoneOrEmail). Please check your inbox." else "A verification code has been sent via SMS to $loginPhoneOrEmail."
+                                                    otpMessageBanner = if (isEmailInput) "A verification code has been dispatched to your email ($loginPhoneOrEmail). Please check your inbox." else "A verification code has been dispatched to your registered email. Please check your inbox."
                                                 }
                                             },
                                             modifier = Modifier
@@ -513,9 +513,9 @@ fun LoginScreen(
                                                 contentColor = PureWhite
                                             )
                                         ) {
-                                            Icon(imageVector = if (isEmailInput) Icons.Default.Email else Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Icon(imageVector = Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text(if (isEmailInput) "Get Email OTP (via Firebase)" else "Get Verification OTP", fontWeight = FontWeight.Bold)
+                                            Text("Get Verification OTP", fontWeight = FontWeight.Bold)
                                         }
                                     } else {
                                         // OTP Banner notification (No on-screen code!)

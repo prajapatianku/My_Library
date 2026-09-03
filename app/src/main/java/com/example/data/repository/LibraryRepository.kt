@@ -196,35 +196,20 @@ class LibraryRepository(
                 )
             }
         } else {
-            // SMS OTP via Firebase Phone Auth
-            val activity = MainActivity.currentActivity
-            com.example.data.auth.FirebasePhoneAuthService.sendSmsOtp(
-                activity = activity,
-                phoneNumber = identifier,
-                onCodeSent = { vId ->
-                    android.util.Log.i("LibraryRepository", "Firebase SMS code dispatched with verificationId: $vId")
-                },
-                onAutoVerified = { autoCode ->
-                    _lastGeneratedOtp.value = autoCode
-                },
-                onError = { err ->
-                    android.util.Log.e("LibraryRepository", "Firebase SMS error: $err")
-                }
-            )
-
-            // Dual delivery: also dispatch to registered email if account has an email
+            // Phone SMS is on hold: deliver to the account's registered email
             val matchedAccount = storage.findAccount(identifier)
-            if (matchedAccount != null && matchedAccount.ownerProfile.email.isNotBlank()) {
+            val registeredEmail = matchedAccount?.ownerProfile?.email?.trim() ?: ""
+            if (registeredEmail.isNotBlank()) {
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                     com.example.data.auth.EmailSenderService.sendOtpEmail(
-                        recipientEmail = matchedAccount.ownerProfile.email,
+                        recipientEmail = registeredEmail,
                         otpCode = randomOtp,
-                        ownerName = matchedAccount.ownerProfile.fullName
+                        ownerName = matchedAccount?.ownerProfile?.fullName ?: "Library Owner"
                     )
                 }
             }
         }
-        addAuditLog("OTP Dispatched", "Auth", "One-time code sent to $identifier via ${if (isEmail) "Email" else "SMS"}")
+        addAuditLog("OTP Dispatched", "Auth", "One-time code sent for $identifier")
         return randomOtp
     }
 
@@ -327,50 +312,29 @@ class LibraryRepository(
         val otp = (100000..999999).random().toString()
         val expiry = System.currentTimeMillis() + (10 * 60 * 1000) // 10 minutes
 
+        val registeredEmail = account.ownerProfile.email.trim()
+        val finalDestination = if (registeredEmail.isNotBlank()) registeredEmail else destination
+
         activeResetSession = PasswordResetSession(
             account = account,
             otp = otp,
             expiryTime = expiry,
-            destination = destination,
-            isEmail = isEmail
+            destination = finalDestination,
+            isEmail = true
         )
 
-        if (isEmail && account.ownerProfile.email.isNotBlank()) {
+        if (registeredEmail.isNotBlank()) {
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                 com.example.data.auth.EmailSenderService.sendOtpEmail(
-                    recipientEmail = account.ownerProfile.email,
+                    recipientEmail = registeredEmail,
                     otpCode = otp,
                     ownerName = account.ownerProfile.fullName
                 )
             }
-        } else if (!isEmail && destination.isNotBlank()) {
-            // SMS OTP via Firebase Phone Auth
-            val activity = MainActivity.currentActivity
-            com.example.data.auth.FirebasePhoneAuthService.sendSmsOtp(
-                activity = activity,
-                phoneNumber = destination,
-                onCodeSent = { vId ->
-                    android.util.Log.i("LibraryRepository", "Firebase SMS code dispatched for reset: $vId")
-                },
-                onError = { err ->
-                    android.util.Log.e("LibraryRepository", "Firebase SMS reset error: $err")
-                }
-            )
-
-            // Dual delivery: also dispatch to registered email if account has an email
-            if (account.ownerProfile.email.isNotBlank()) {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    com.example.data.auth.EmailSenderService.sendOtpEmail(
-                        recipientEmail = account.ownerProfile.email,
-                        otpCode = otp,
-                        ownerName = account.ownerProfile.fullName
-                    )
-                }
-            }
         }
 
-        addAuditLog("Password Reset OTP", "Auth", "Reset code dispatched to $destination")
-        return Triple(true, "Verification OTP sent to $destination", otp)
+        addAuditLog("Password Reset OTP", "Auth", "Reset code dispatched to $finalDestination")
+        return Triple(true, "Verification OTP sent to your registered email ($finalDestination)", otp)
     }
 
     fun verifyPasswordResetOtp(enteredOtp: String): Pair<Boolean, String> {

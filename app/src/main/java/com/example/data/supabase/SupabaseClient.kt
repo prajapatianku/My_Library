@@ -36,6 +36,25 @@ class SupabaseApiClient {
                 put("id", accountId)
                 put("data", accountJson)
                 put("updated_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+                try {
+                    val root = JSONObject(accountJson)
+                    val owner = root.optJSONObject("ownerProfile")
+                    val lib = root.optJSONObject("library")
+                    val sub = root.optJSONObject("saasSubscription")
+                    if (owner != null) {
+                        put("owner_name", owner.optString("fullName", ""))
+                        put("phone", owner.optString("phone", ""))
+                        put("email", owner.optString("email", ""))
+                    }
+                    if (lib != null) {
+                        put("library_name", lib.optString("name", ""))
+                        put("city", lib.optString("city", ""))
+                        put("total_seats", lib.optInt("totalSeats", 60))
+                    }
+                    if (sub != null) {
+                        put("plan_type", sub.optString("planType", "FREE"))
+                    }
+                } catch (_: Exception) {}
             }.toString()
             val body = payload.toRequestBody(jsonMediaType)
             val request = Request.Builder()

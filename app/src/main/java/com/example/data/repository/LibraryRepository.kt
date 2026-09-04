@@ -684,6 +684,17 @@ class LibraryRepository(
                 val accountJson = storage.serializeAccount(currentAccount).toString()
                 CoroutineScope(Dispatchers.IO).launch {
                     supabaseClient.upsertAccount(primarySyncKey, accountJson)
+                    if (emailKey.isNotBlank() && emailKey != primarySyncKey) {
+                        supabaseClient.upsertAccount(emailKey, accountJson)
+                    }
+                    if (currentAccount.accountId.isNotBlank() && currentAccount.accountId != primarySyncKey && currentAccount.accountId != emailKey) {
+                        supabaseClient.upsertAccount(currentAccount.accountId, accountJson)
+                    }
+                    try {
+                        PlatformRepository.getInstance().refreshOwners()
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
                 }
             }
         } catch (e: Exception) {

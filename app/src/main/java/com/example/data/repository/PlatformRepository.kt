@@ -723,9 +723,10 @@ class PlatformRepository private constructor(private val context: Context?) {
             scope.launch {
                 try {
                     val phoneKey = account.ownerProfile.phone.replace("+", "").replace(" ", "").replace("-", "").trim()
-                    val primarySyncKey = phoneKey.ifBlank { account.ownerProfile.email.trim().lowercase() }
-                    supabaseClient.deleteAccount(primarySyncKey)
+                    val emailKey = account.ownerProfile.email.trim().lowercase()
                     supabaseClient.deleteAccount(account.accountId)
+                    if (phoneKey.isNotBlank()) supabaseClient.deleteAccount(phoneKey)
+                    if (emailKey.isNotBlank()) supabaseClient.deleteAccount(emailKey)
                 } catch (e: Exception) {
                     Log.e("PlatformRepository", "Error deleting account from cloud: ${e.message}")
                 }

@@ -69,29 +69,61 @@ class SupabaseApiClient {
         }
     }
 
-    suspend fun fetchAccount(accountId: String): String? = withContext(Dispatchers.IO) {
+    suspend fun fetchAccount(queryKey: String): String? = withContext(Dispatchers.IO) {
+        val trimmed = queryKey.trim()
+        val phoneKey = trimmed.replace("+", "").replace(" ", "").replace("-", "")
+        val emailKey = trimmed.lowercase()
+
         try {
-            val url = "${SupabaseConfig.SUPABASE_URL}/rest/v1/library_accounts?id=eq.$accountId&select=data"
-            val request = Request.Builder()
-                .url(url)
+            // First search directly by account ID
+            val url1 = "${SupabaseConfig.SUPABASE_URL}/rest/v1/library_accounts?id=eq.$trimmed&select=data"
+            val req1 = Request.Builder()
+                .url(url1)
                 .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
                 .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
-                .addHeader("Content-Type", "application/json")
                 .get()
                 .build()
-
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val bodyStr = response.body?.string()
+            val resp1 = client.newCall(req1).execute()
+            if (resp1.isSuccessful) {
+                val bodyStr = resp1.body?.string()
                 if (!bodyStr.isNullOrBlank()) {
-                    val jsonArray = JSONArray(bodyStr)
-                    if (jsonArray.length() > 0) {
-                        jsonArray.getJSONObject(0).optString("data")
-                    } else null
-                } else null
-            } else {
-                null
+                    val arr = JSONArray(bodyStr)
+                    if (arr.length() > 0) return@withContext arr.getJSONObject(0).optString("data")
+                }
             }
+
+            // Fallback: Fetch library_accounts and match phone or email inside JSON
+            val urlAll = "${SupabaseConfig.SUPABASE_URL}/rest/v1/library_accounts?select=data"
+            val reqAll = Request.Builder()
+                .url(urlAll)
+                .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+                .get()
+                .build()
+            val respAll = client.newCall(reqAll).execute()
+            if (respAll.isSuccessful) {
+                val bodyStr = respAll.body?.string()
+                if (!bodyStr.isNullOrBlank()) {
+                    val arr = JSONArray(bodyStr)
+                    for (i in 0 until arr.length()) {
+                        val dStr = arr.getJSONObject(i).optString("data")
+                        if (dStr.isNotBlank()) {
+                            try {
+                                val dObj = JSONObject(dStr)
+                                val owner = dObj.optJSONObject("ownerProfile")
+                                if (owner != null) {
+                                    val p = owner.optString("phone").replace("+", "").replace(" ", "").replace("-", "")
+                                    val e = owner.optString("email").trim().lowercase()
+                                    if ((phoneKey.isNotBlank() && p == phoneKey) || (emailKey.isNotBlank() && e == emailKey)) {
+                                        return@withContext dStr
+                                    }
+                                }
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
+            }
+            null
         } catch (e: Exception) {
             Log.e("SupabaseApiClient", "Error fetching account: ${e.message}")
             null

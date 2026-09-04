@@ -675,21 +675,11 @@ class LibraryRepository(
                 // Ignore if not initialized yet
             }
 
-            // Cloud sync to Supabase
-            val phoneKey = currentAccount.ownerProfile.phone.replace("+", "").replace(" ", "").replace("-", "").trim()
-            val emailKey = currentAccount.ownerProfile.email.trim().lowercase()
-            val primarySyncKey = if (phoneKey.isNotBlank()) phoneKey else emailKey
-
-            if (primarySyncKey.isNotBlank()) {
+            // Cloud sync to Supabase (Single unique primary key per account)
+            if (currentAccount.accountId.isNotBlank()) {
                 val accountJson = storage.serializeAccount(currentAccount).toString()
                 CoroutineScope(Dispatchers.IO).launch {
-                    supabaseClient.upsertAccount(primarySyncKey, accountJson)
-                    if (emailKey.isNotBlank() && emailKey != primarySyncKey) {
-                        supabaseClient.upsertAccount(emailKey, accountJson)
-                    }
-                    if (currentAccount.accountId.isNotBlank() && currentAccount.accountId != primarySyncKey && currentAccount.accountId != emailKey) {
-                        supabaseClient.upsertAccount(currentAccount.accountId, accountJson)
-                    }
+                    supabaseClient.upsertAccount(currentAccount.accountId, accountJson)
                     try {
                         PlatformRepository.getInstance().refreshOwners()
                     } catch (e: Exception) {

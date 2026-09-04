@@ -556,17 +556,11 @@ class PlatformRepository private constructor(private val context: Context?) {
         _ownersList.value = localAccounts
         scope.launch {
             try {
-                // Auto-sync all local accounts to Supabase cloud
+                // Auto-sync all local accounts to Supabase cloud (Single unique primary key per account)
                 localAccounts.forEach { acc ->
-                    val phoneKey = acc.ownerProfile.phone.replace("+", "").replace(" ", "").replace("-", "").trim()
-                    val emailKey = acc.ownerProfile.email.trim().lowercase()
-                    val primarySyncKey = if (phoneKey.isNotBlank()) phoneKey else emailKey
-                    if (primarySyncKey.isNotBlank()) {
+                    if (acc.accountId.isNotBlank()) {
                         val accountJson = storage.serializeAccount(acc).toString()
-                        supabaseClient.upsertAccount(primarySyncKey, accountJson)
-                        if (emailKey.isNotBlank() && emailKey != primarySyncKey) {
-                            supabaseClient.upsertAccount(emailKey, accountJson)
-                        }
+                        supabaseClient.upsertAccount(acc.accountId, accountJson)
                     }
                 }
 

@@ -720,9 +720,12 @@ fun OwnerDirectoryCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(account.library.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = WarmTextDark)
                     Text("👤 ${account.ownerProfile.fullName} • 📞 ${account.ownerProfile.phone}", fontSize = 11.sp, color = WarmTextDark, fontWeight = FontWeight.Medium)
-                    if (account.ownerProfile.email.isNotBlank()) {
-                        Text("✉️ ${account.ownerProfile.email}", fontSize = 10.sp, color = WarmTextMuted)
-                    }
+                    Text(
+                        text = "✉️ ${if (account.ownerProfile.email.isNotBlank()) account.ownerProfile.email else "No email registered"}",
+                        fontSize = 11.sp,
+                        color = Color(0xFF0747A6),
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
                 Column(horizontalAlignment = Alignment.End) {

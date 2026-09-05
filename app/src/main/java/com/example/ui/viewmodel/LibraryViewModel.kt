@@ -42,6 +42,7 @@ class LibraryViewModel(
     val auditLogs = repository.auditLogs
     val isLoggedIn = repository.isLoggedIn
     val isOnboardingCompleted = repository.isOnboardingCompleted
+    val syncInfo = repository.syncInfo
 
     // Platform (Super Admin) Repository & State
     val platformRepository: PlatformRepository = PlatformRepository.getInstance()

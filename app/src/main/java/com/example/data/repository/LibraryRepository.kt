@@ -81,6 +81,9 @@ class LibraryRepository(
     private val _lastGeneratedOtp = MutableStateFlow<String?>(null)
     val lastGeneratedOtp: StateFlow<String?> = _lastGeneratedOtp.asStateFlow()
 
+    private val _syncInfo = MutableStateFlow(SyncInfo(status = SyncStatus.SYNCED, lastSyncTimestamp = "Just now"))
+    val syncInfo: StateFlow<SyncInfo> = _syncInfo.asStateFlow()
+
     init {
         val lastId = storage.getLastLoggedInAccountId()
         if (lastId != null) {
@@ -678,8 +681,15 @@ class LibraryRepository(
             // Cloud sync to Supabase (Single unique primary key per account)
             if (currentAccount.accountId.isNotBlank()) {
                 val accountJson = storage.serializeAccount(currentAccount).toString()
+                _syncInfo.value = SyncInfo(status = SyncStatus.PENDING_LOCAL_SYNC, lastSyncTimestamp = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date()))
                 CoroutineScope(Dispatchers.IO).launch {
-                    supabaseClient.upsertAccount(currentAccount.accountId, accountJson)
+                    val success = supabaseClient.upsertAccount(currentAccount.accountId, accountJson)
+                    val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+                    _syncInfo.value = if (success) {
+                        SyncInfo(status = SyncStatus.SYNCED, lastSyncTimestamp = timeStr)
+                    } else {
+                        SyncInfo(status = SyncStatus.SYNC_ERROR, lastSyncTimestamp = timeStr, errorMessage = "Cloud sync delayed - offline cache active")
+                    }
                     try {
                         PlatformRepository.getInstance().refreshOwners()
                     } catch (e: Exception) {
@@ -697,36 +707,11 @@ class LibraryRepository(
     // ==========================================
 
     fun getMaxStudentsAllowed(): Int {
-        val currentPlan = _saasSubscription.value.planType
-        return when (currentPlan) {
-            SaaSPlanType.FREE -> 20
-            else -> 999999
-        }
+        return com.example.data.entitlements.EntitlementManager.getMaxStudentsAllowed(_saasSubscription.value.planType)
     }
 
     fun canAddStudent(): Boolean {
         return _students.value.size < getMaxStudentsAllowed()
-    }
-
-    fun hasFeature(featureKey: String): Boolean {
-        val currentPlan = _saasSubscription.value.planType
-        return when (featureKey) {
-            "multi_branch", "branch_dashboard", "consolidated_reports", "branch_comparison" -> {
-                currentPlan == SaaSPlanType.BUSINESS
-            }
-            "whatsapp_fee_reminders", "whatsapp_reminders", "revenue_download", "pdf_export", "csv_export", "advanced_analytics", "email_support", "student_limit_20", "unlimited_students" -> {
-                currentPlan == SaaSPlanType.PREMIUM || currentPlan == SaaSPlanType.BUSINESS
-            }
-            else -> true
-        }
-    }
-
-    fun requiredPlan(featureKey: String): SaaSPlanType {
-        return when (featureKey) {
-            "multi_branch", "branch_dashboard", "consolidated_reports", "branch_comparison" -> SaaSPlanType.BUSINESS
-            "whatsapp_fee_reminders", "whatsapp_reminders", "revenue_download", "pdf_export", "csv_export", "advanced_analytics", "email_support", "student_limit_20", "unlimited_students" -> SaaSPlanType.PREMIUM
-            else -> SaaSPlanType.FREE
-        }
     }
 
     fun checkSubscriptionStatus() {
@@ -1771,5 +1756,13 @@ class LibraryRepository(
                 branchCount = 1
             )
         )
+    }
+
+    fun hasFeature(featureKey: String): Boolean {
+        return com.example.data.entitlements.EntitlementManager.hasFeature(_saasSubscription.value.planType, featureKey)
+    }
+
+    fun requiredPlan(featureKey: String): SaaSPlanType {
+        return com.example.data.entitlements.EntitlementManager.getRequiredPlan(featureKey)
     }
 }

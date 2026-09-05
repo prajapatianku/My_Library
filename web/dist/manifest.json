@@ -1,0 +1,22 @@
+{
+  "short_name": "Vidyara",
+  "name": "Vidyara - Library & Study Center Management System",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0747A6",
+  "theme_color": "#0747A6",
+  "display": "standalone",
+  "orientation": "any",
+  "description": "Comprehensive SaaS Platform for Library Owners and Study Center Management"
+}

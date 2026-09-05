@@ -379,3 +379,18 @@ data class PlatformAppControl(
     )
 )
 
+enum class SyncStatus(val label: String) {
+    SYNCED("Synced"),
+    PENDING_LOCAL_SYNC("Pending Sync"),
+    SYNC_ERROR("Sync Error"),
+    OFFLINE("Offline")
+}
+
+data class SyncInfo(
+    val status: SyncStatus = SyncStatus.SYNCED,
+    val lastSyncTimestamp: String = "Just now",
+    val pendingChangesCount: Int = 0,
+    val errorMessage: String? = null
+)
+
+

@@ -144,17 +144,10 @@ export function createDefaultAccountData(ownerName: string, phone: string, email
       { id: 'branch_01', name: `${libraryName} Main Branch` }
     ],
     activeBranchId: 'branch_01',
-    studentsCount: 3,
-    occupiedSeatsCount: 3,
-    pendingDuesCount: 1,
-    students: [
-      { id: 'std_01', name: 'Aryan Patel', phone: '9876543210', seatNo: 1, shift: 'Full Day', feeAmount: 1200, dueStatus: 'PAID', joinDate: '2026-08-01' },
-      { id: 'std_02', name: 'Priya Sharma', phone: '9876543211', seatNo: 2, shift: 'Morning', feeAmount: 800, dueStatus: 'PAID', joinDate: '2026-08-05' },
-      { id: 'std_03', name: 'Rohan Kumar', phone: '9876543212', seatNo: 3, shift: 'Evening', feeAmount: 800, dueStatus: 'OVERDUE', joinDate: '2026-08-10' }
-    ],
-    paymentsHistory: [
-      { id: 'pay_01', studentName: 'Aryan Patel', amount: 1200, date: '2026-08-01', mode: 'UPI', receiptNo: 'REC-1001' },
-      { id: 'pay_02', studentName: 'Priya Sharma', amount: 800, date: '2026-08-05', mode: 'CASH', receiptNo: 'REC-1002' }
-    ]
+    studentsCount: 0,
+    occupiedSeatsCount: 0,
+    pendingDuesCount: 0,
+    students: [],
+    paymentsHistory: []
   };
 }

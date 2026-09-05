@@ -1,0 +1,8 @@
+{
+  "name": "vidyara-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "npm run --prefix web build",
+    "dev": "npm run --prefix web dev"
+  }
+}

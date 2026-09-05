@@ -55,6 +55,7 @@ export const MarketingPages: React.FC<MarketingPagesProps> = ({
           <button onClick={() => onNavigate('/features')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/features' ? 700 : 500, color: currentRoute === '/features' ? '#6750A4' : '#475569', cursor: 'pointer' }}>Features</button>
           <button onClick={() => onNavigate('/pricing')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/pricing' ? 700 : 500, color: currentRoute === '/pricing' ? '#6750A4' : '#475569', cursor: 'pointer' }}>Pricing</button>
           <button onClick={() => onNavigate('/how-it-works')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/how-it-works' ? 700 : 500, color: currentRoute === '/how-it-works' ? '#6750A4' : '#475569', cursor: 'pointer' }}>How it Works</button>
+          <button onClick={() => onNavigate('/terms')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/terms' ? 700 : 500, color: currentRoute === '/terms' ? '#6750A4' : '#475569', cursor: 'pointer' }}>Terms & Conditions</button>
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -175,16 +176,55 @@ export const MarketingPages: React.FC<MarketingPagesProps> = ({
             <p style={{ fontSize: '16px', color: '#64748B', marginBottom: '40px' }}>Designed to give library owners total control over seats, student renewals, and revenue.</p>
             <div style={{ display: 'grid', gap: '20px', textAlign: 'left' }}>
               <div style={{ padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#0747A6' }}>1. Register your Library & Define Shifts</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#6750A4' }}>1. Register your Library & Define Shifts</h4>
                 <p style={{ fontSize: '14px', color: '#475569', marginTop: '6px' }}>Enter your library details, total seat capacity, and create custom shifts (Morning, Evening, 24x7).</p>
               </div>
               <div style={{ padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#0747A6' }}>2. Assign Seats & Students</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#6750A4' }}>2. Assign Seats & Students</h4>
                 <p style={{ fontSize: '14px', color: '#475569', marginTop: '6px' }}>Assign numeric seat numbers (1, 2, 3...) to students, set monthly subscription dates, and collect fees.</p>
               </div>
               <div style={{ padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#0747A6' }}>3. Auto WhatsApp Reminders & Attendance</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#6750A4' }}>3. Auto WhatsApp Reminders & Attendance</h4>
                 <p style={{ fontSize: '14px', color: '#475569', marginTop: '6px' }}>Dispatch automatic payment reminders on WhatsApp and track daily student attendance with QR codes.</p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {currentRoute === '/terms' && (
+          <section style={{ padding: '60px 24px', maxWidth: '850px', margin: '0 auto' }}>
+            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#0F172A', marginBottom: '8px' }}>Terms & Conditions & Privacy Policy</h2>
+            <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '32px' }}>Vidyara SaaS Platform (vidyara.app) — Effective September 2026</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', backgroundColor: '#FFFFFF', padding: '32px', borderRadius: '20px', border: '1px solid #E2E8F0', fontSize: '14px', lineHeight: 1.7, color: '#334155' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>1. Acceptance of Terms</h3>
+                <p>By creating a Library Owner account or accessing the Vidyara SaaS platform on vidyara.app or via the Vidyara Android / Mobile app, you agree to comply with and be bound by these Terms and Conditions.</p>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>2. SaaS Subscription Tiers (Domain B)</h3>
+                <p>Vidyara provides Library & Study Center Management services under FREE, PRO (₹99/month), and BUSINESS (₹199/month) subscription tiers. Subscription fees grant entitlement access to platform features such as student capacity, multi-branch management, and analytics export.</p>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>3. Student Data & Privacy Protection</h3>
+                <p>All student records, phone numbers, attendance logs, and fee collection entries entered by a Library Owner belong exclusively to that Library Owner. Vidyara does not sell, market, or share student data with any third-party services.</p>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>4. Payment Reminders & Communication</h3>
+                <p>WhatsApp payment reminders dispatched through the platform are directed by the Library Owner. Vidyara is not responsible for misdirected student contact details provided by the owner.</p>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>5. Cloud Sync & Local Storage</h3>
+                <p>Vidyara uses local-first caching and cloud database synchronization via Supabase. Users can perform manual cloud syncs or export CSV reports at any time.</p>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>6. Support & Contact</h3>
+                <p>For support, billing inquiries, or account deletion requests, please contact our support team at <strong>support@vidyara.app</strong>.</p>
               </div>
             </div>
           </section>
@@ -192,7 +232,14 @@ export const MarketingPages: React.FC<MarketingPagesProps> = ({
       </main>
 
       {/* Footer */}
-      <footer style={{ backgroundColor: '#0F172A', color: '#94A3B8', padding: '32px 24px', textAlign: 'center', fontSize: '13px' }}>
+      <footer style={{ backgroundColor: '#0F172A', color: '#94A3B8', padding: '40px 24px', textAlign: 'center', fontSize: '13px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <button onClick={() => onNavigate('/')} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>Home</button>
+          <button onClick={() => onNavigate('/features')} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>Features</button>
+          <button onClick={() => onNavigate('/pricing')} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>Pricing</button>
+          <button onClick={() => onNavigate('/how-it-works')} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>How it Works</button>
+          <button onClick={() => onNavigate('/terms')} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>Terms & Conditions</button>
+        </div>
         <p>© 2026 Vidyara Platform (vidyara.app). All rights reserved.</p>
       </footer>
     </div>

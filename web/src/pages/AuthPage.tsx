@@ -64,14 +64,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  const handleDemoOwnerLogin = async () => {
-    setLoading(true);
-    const demoAccount = createDefaultAccountData('Ratnesh Ankit', '8265159743', 'ratneshankit123@gmail.com', 'Saraswati Study Point', 'Patna', 60);
-    await upsertLibraryAccount(demoAccount.accountId, demoAccount);
-    onLoginOwnerSuccess(demoAccount);
-    setLoading(false);
-  };
-
   const handleOwnerRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -477,28 +469,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   >
                     {loading ? 'Signing In...' : 'Sign In to Owner Portal'} <ArrowRight size={18} />
                   </button>
-
-                  <div style={{ textAlign: 'center', marginTop: '12px' }}>
-                    <span style={{ fontSize: '12px', color: '#9CA3AF' }}>— OR —</span>
-                    <br />
-                    <button
-                      type="button"
-                      onClick={handleDemoOwnerLogin}
-                      style={{
-                        marginTop: '8px',
-                        background: 'none',
-                        border: '1px dashed #6750A4',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        color: '#6750A4',
-                        fontWeight: 700,
-                        fontSize: '12px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Instant Demo Sign In (Saraswati Study Point)
-                    </button>
-                  </div>
                 </form>
               )}
             </div>

@@ -1,8 +1,10 @@
 {
   "name": "vidyara-monorepo",
   "private": true,
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
-    "build": "npm run --prefix web build",
-    "dev": "npm run --prefix web dev"
+    "build": "npm run build --workspace=web"
   }
 }

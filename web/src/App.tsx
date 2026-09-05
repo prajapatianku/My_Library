@@ -1,11 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MarketingPages } from './pages/MarketingPages';
+import { AuthPage } from './pages/AuthPage';
 import { OwnerPortal } from './pages/OwnerPortal';
 import { SuperAdminPortal } from './pages/SuperAdminPortal';
 
 export const App: React.FC = () => {
-  const [view, setView] = useState<'marketing' | 'owner' | 'superadmin'>('marketing');
+  const [view, setView] = useState<'marketing' | 'auth' | 'owner' | 'superadmin'>('marketing');
   const [marketingRoute, setMarketingRoute] = useState<string>('/');
+  const [activeAccount, setActiveAccount] = useState<any>(null);
+
+  // Restore session from localStorage if available
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem('vidyara_active_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        if (parsed.type === 'owner' && parsed.account) {
+          setActiveAccount(parsed.account);
+          setView('owner');
+        } else if (parsed.type === 'superadmin') {
+          setView('superadmin');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load session:', e);
+    }
+  }, []);
+
+  const handleLoginOwnerSuccess = (accountData: any) => {
+    setActiveAccount(accountData);
+    localStorage.setItem('vidyara_active_session', JSON.stringify({ type: 'owner', account: accountData }));
+    setView('owner');
+  };
+
+  const handleLoginSuperAdminSuccess = () => {
+    localStorage.setItem('vidyara_active_session', JSON.stringify({ type: 'superadmin' }));
+    setView('superadmin');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('vidyara_active_session');
+    setActiveAccount(null);
+    setView('auth');
+  };
 
   return (
     <div>
@@ -13,17 +50,32 @@ export const App: React.FC = () => {
         <MarketingPages
           currentRoute={marketingRoute}
           onNavigate={(route) => setMarketingRoute(route)}
-          onLaunchOwnerPortal={() => setView('owner')}
-          onLaunchSuperAdmin={() => setView('superadmin')}
+          onLaunchOwnerPortal={() => setView('auth')}
+          onLaunchSuperAdmin={() => setView('auth')}
         />
       )}
 
-      {view === 'owner' && (
-        <OwnerPortal onBackToMarketing={() => setView('marketing')} />
+      {view === 'auth' && (
+        <AuthPage
+          onLoginOwnerSuccess={handleLoginOwnerSuccess}
+          onLoginSuperAdminSuccess={handleLoginSuperAdminSuccess}
+          onBackToMarketing={() => setView('marketing')}
+        />
+      )}
+
+      {view === 'owner' && activeAccount && (
+        <OwnerPortal
+          accountData={activeAccount}
+          onLogout={handleLogout}
+          onBackToMarketing={() => setView('marketing')}
+        />
       )}
 
       {view === 'superadmin' && (
-        <SuperAdminPortal onBackToMarketing={() => setView('marketing')} />
+        <SuperAdminPortal
+          onLogout={handleLogout}
+          onBackToMarketing={() => setView('marketing')}
+        />
       )}
     </div>
   );

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Users, Radio, Tag, Download, ArrowLeft, Trash2, CheckCircle2, RefreshCw } from 'lucide-react';
-import { fetchAllLibraryAccounts, deleteLibraryAccountCloud, LibraryAccountRecord } from '../services/SupabaseService';
+import { ShieldCheck, BookOpen, Users, CreditCard, RefreshCw, Trash2, ArrowUpRight, Search, LogOut, ArrowLeft } from 'lucide-react';
+import { fetchAllLibraryAccounts, upsertLibraryAccount, deleteLibraryAccountCloud, LibraryAccountRecord } from '../services/SupabaseService';
 
 interface SuperAdminPortalProps {
+  onLogout: () => void;
   onBackToMarketing: () => void;
 }
 
-export const SuperAdminPortal: React.FC<SuperAdminPortalProps> = ({ onBackToMarketing }) => {
+export const SuperAdminPortal: React.FC<SuperAdminPortalProps> = ({ onLogout, onBackToMarketing }) => {
   const [accounts, setAccounts] = useState<LibraryAccountRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPlanFilter, setSelectedPlanFilter] = useState('ALL');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const loadCloudAccounts = async () => {
+  const loadData = async () => {
     setLoading(true);
     const data = await fetchAllLibraryAccounts();
     setAccounts(data);
@@ -20,41 +20,59 @@ export const SuperAdminPortal: React.FC<SuperAdminPortalProps> = ({ onBackToMark
   };
 
   useEffect(() => {
-    loadCloudAccounts();
+    loadData();
   }, []);
 
-  const handleDeleteAccount = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to permanently delete library "${name}" (${id}) from Supabase cloud database?`)) {
-      const ok = await deleteLibraryAccountCloud(id);
-      if (ok) {
-        setAccounts(prev => prev.filter(a => a.id !== id));
-      } else {
-        alert('Failed to delete account from cloud.');
-      }
+  const handleUpgradePlan = async (acc: LibraryAccountRecord, targetPlan: string) => {
+    let parsed: any = {};
+    try {
+      parsed = typeof acc.data === 'string' ? JSON.parse(acc.data) : acc.data;
+    } catch (e) {
+      parsed = {};
+    }
+
+    parsed.saasSubscription = {
+      ...(parsed.saasSubscription || {}),
+      planType: targetPlan,
+      status: 'ACTIVE'
+    };
+
+    const success = await upsertLibraryAccount(acc.id, parsed);
+    if (success) {
+      loadData();
+    } else {
+      alert('Failed to update SaaS plan on Supabase cloud');
     }
   };
 
-  const filtered = accounts.filter(acc => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = !term ||
-      acc.id.toLowerCase().includes(term) ||
-      (acc.owner_name && acc.owner_name.toLowerCase().includes(term)) ||
-      (acc.library_name && acc.library_name.toLowerCase().includes(term)) ||
-      (acc.phone && acc.phone.includes(term)) ||
-      (acc.email && acc.email.toLowerCase().includes(term));
+  const handleDeleteAccount = async (accId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this library account from Supabase database?')) return;
+    const success = await deleteLibraryAccountCloud(accId);
+    if (success) {
+      loadData();
+    } else {
+      alert('Failed to delete library account from Supabase cloud');
+    }
+  };
 
-    const matchesPlan = selectedPlanFilter === 'ALL' || acc.plan_type === selectedPlanFilter;
-
-    return matchesSearch && matchesPlan;
+  const filteredAccounts = accounts.filter(acc => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (acc.library_name || '').toLowerCase().includes(q) ||
+      (acc.owner_name || '').toLowerCase().includes(q) ||
+      (acc.phone || '').toLowerCase().includes(q) ||
+      (acc.email || '').toLowerCase().includes(q) ||
+      (acc.city || '').toLowerCase().includes(q)
+    );
   });
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#F8FAFC' }}>
-      {/* Top Admin Header */}
+      {/* Super Admin Top Header */}
       <header style={{
-        backgroundColor: '#0F172A',
+        backgroundColor: '#1E1B4B',
         color: '#FFFFFF',
-        padding: '16px 24px',
+        padding: '16px 32px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -63,85 +81,133 @@ export const SuperAdminPortal: React.FC<SuperAdminPortalProps> = ({ onBackToMark
         zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={onBackToMarketing} style={{ padding: '6px 12px', border: '1px solid #334155', backgroundColor: '#1E293B', color: '#FFFFFF', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}>
-            <ArrowLeft size={16} /> Marketing
-          </button>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #4F378B 0%, #6750A4 50%, #7F67BE 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF'
+          }}>
+            <ShieldCheck size={26} />
+          </div>
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#F8FAFC' }}>👑 Vidyara Super Admin Platform</h2>
-            <p style={{ fontSize: '11px', color: '#94A3B8' }}>Master Control Center & Live Cloud Operations</p>
+            <h1 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px' }}>Vidyara Super Admin Control Center</h1>
+            <p style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: 700 }}>DATABASE OVERVIEW & SAAS TIERS</p>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={loadCloudAccounts} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh Directory
+          <button onClick={loadData} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #4338CA', backgroundColor: '#312E81', color: '#E0E7FF', cursor: 'pointer', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh DB
+          </button>
+          <button onClick={onLogout} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#EF4444', color: '#FFFFFF', cursor: 'pointer', fontSize: '13px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <LogOut size={16} /> Logout
           </button>
         </div>
       </header>
 
-      {/* Admin Content Area */}
+      {/* Main Workspace Layout */}
       <main style={{ flex: 1, padding: '32px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>Registered Library Owners Directory</h3>
-            <p style={{ fontSize: '14px', color: '#64748B' }}>{filtered.length} Unique Libraries Registered Across All Devices</p>
+        {/* Metrics Bar */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+            <p style={{ fontSize: '13px', color: '#64748B', fontWeight: 700 }}>Total Registered Libraries</p>
+            <h3 style={{ fontSize: '36px', fontWeight: 900, color: '#6750A4', marginTop: '8px' }}>{accounts.length}</h3>
           </div>
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <input
-              type="text"
-              placeholder="Search by owner, phone, email, library..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid #CBD5E1', minWidth: '280px', fontSize: '14px' }}
-            />
+          <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+            <p style={{ fontSize: '13px', color: '#64748B', fontWeight: 700 }}>Business Plan Libraries</p>
+            <h3 style={{ fontSize: '36px', fontWeight: 900, color: '#059669', marginTop: '8px' }}>
+              {accounts.filter(a => (a.plan_type || '').toUpperCase() === 'BUSINESS').length}
+            </h3>
+          </div>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+            <p style={{ fontSize: '13px', color: '#64748B', fontWeight: 700 }}>Total Seats Managed</p>
+            <h3 style={{ fontSize: '36px', fontWeight: 900, color: '#2563EB', marginTop: '8px' }}>
+              {accounts.reduce((sum, a) => sum + (a.total_seats || 60), 0)}
+            </h3>
           </div>
         </div>
 
-        {/* Directory Grid */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', fontSize: '16px', color: '#64748B' }}>Loading cloud records from Supabase...</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px', backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
-            <p style={{ fontSize: '16px', color: '#64748B' }}>No registered library accounts found.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '16px' }}>
-            {filtered.map(acc => (
-              <div key={acc.id} style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '14px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                  <h4 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>{acc.library_name || 'Unnamed Library'}</h4>
-                  <p style={{ fontSize: '13px', color: '#334155', fontWeight: 600, marginTop: '4px' }}>
-                    👤 {acc.owner_name || 'Owner'} • 📞 {acc.phone || 'N/A'}
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#0747A6', fontWeight: 600, marginTop: '2px' }}>
-                    ✉️ {acc.email || 'No email registered'}
-                  </p>
-                  <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '6px' }}>
-                    ID: {acc.id} | City: {acc.city || 'N/A'} | Updated: {acc.updated_at ? new Date(acc.updated_at).toLocaleString() : 'N/A'}
-                  </p>
-                </div>
+        {/* Database Search Filter */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Search size={20} color="#64748B" />
+          <input
+            type="text"
+            placeholder="Search database by Library Name, Owner Name, Phone, Email, or City..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 500 }}
+          />
+        </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    backgroundColor: acc.plan_type === 'BUSINESS' ? '#EDE9FE' : acc.plan_type === 'PREMIUM' ? '#FEF3C7' : '#F1F5F9',
-                    color: acc.plan_type === 'BUSINESS' ? '#6D28D9' : acc.plan_type === 'PREMIUM' ? '#D97706' : '#475569'
-                  }}>
-                    {acc.plan_type || 'FREE'}
-                  </span>
-
-                  <button onClick={() => handleDeleteAccount(acc.id, acc.library_name || acc.id)} style={{ padding: '8px 12px', backgroundColor: '#FEF2F2', color: '#DC2626', borderRadius: '8px', border: '1px solid #FCA5A5', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Trash2 size={14} /> Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Live Accounts Database Table */}
+        <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B', fontWeight: 700 }}>
+                <th style={{ padding: '16px 20px' }}>Library Name & Location</th>
+                <th style={{ padding: '16px 20px' }}>Owner Details</th>
+                <th style={{ padding: '16px 20px' }}>Total Seats</th>
+                <th style={{ padding: '16px 20px' }}>SaaS Plan</th>
+                <th style={{ padding: '16px 20px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAccounts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontWeight: 600 }}>
+                    {loading ? 'Fetching database accounts...' : 'No accounts found in database'}
+                  </td>
+                </tr>
+              ) : (
+                filteredAccounts.map((acc) => (
+                  <tr key={acc.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '16px 20px' }}>
+                      <div style={{ fontWeight: 800, color: '#0F172A' }}>{acc.library_name || acc.id}</div>
+                      <div style={{ fontSize: '12px', color: '#64748B' }}>{acc.city || 'Patna'}</div>
+                    </td>
+                    <td style={{ padding: '16px 20px' }}>
+                      <div style={{ fontWeight: 700, color: '#334155' }}>{acc.owner_name || 'N/A'}</div>
+                      <div style={{ fontSize: '12px', color: '#64748B' }}>📞 {acc.phone || 'N/A'} | ✉️ {acc.email || 'N/A'}</div>
+                    </td>
+                    <td style={{ padding: '16px 20px', fontWeight: 800, color: '#6750A4' }}>
+                      {acc.total_seats || 60} Seats
+                    </td>
+                    <td style={{ padding: '16px 20px' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        backgroundColor: (acc.plan_type || '').toUpperCase() === 'BUSINESS' ? '#F3EDF7' : (acc.plan_type || '').toUpperCase() === 'PREMIUM' ? '#EFF6FF' : '#F1F5F9',
+                        color: (acc.plan_type || '').toUpperCase() === 'BUSINESS' ? '#6750A4' : (acc.plan_type || '').toUpperCase() === 'PREMIUM' ? '#1D4ED8' : '#475569'
+                      }}>
+                        {acc.plan_type || 'FREE'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 20px', display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleUpgradePlan(acc, 'BUSINESS')}
+                        style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', backgroundColor: '#6750A4', color: '#FFFFFF', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        Set Business
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAccount(acc.id)}
+                        style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', backgroundColor: '#FEE2E2', color: '#991B1B', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </main>
     </div>
   );

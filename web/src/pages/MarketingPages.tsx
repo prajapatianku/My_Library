@@ -30,36 +30,37 @@ export const MarketingPages: React.FC<MarketingPagesProps> = ({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => onNavigate('/')}>
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            backgroundColor: '#0747A6',
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #4F378B 0%, #6750A4 50%, #7F67BE 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#FFFFFF',
             fontWeight: 'bold',
-            fontSize: '20px'
+            fontSize: '20px',
+            boxShadow: '0 4px 12px rgba(103, 80, 164, 0.25)'
           }}>
             <BookOpen size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0747A6', letterSpacing: '-0.5px' }}>Vidyara</h1>
-            <p style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>LIBRARY & STUDY CENTER SAAS</p>
+            <h1 style={{ fontSize: '20px', fontWeight: 900, color: '#1C1B1F', letterSpacing: '-0.5px' }}>Vidyara</h1>
+            <p style={{ fontSize: '10px', color: '#6750A4', fontWeight: 700 }}>LIBRARY & STUDY CENTER SAAS</p>
           </div>
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <button onClick={() => onNavigate('/')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/' ? 700 : 500, color: currentRoute === '/' ? '#0747A6' : '#475569', cursor: 'pointer' }}>Home</button>
-          <button onClick={() => onNavigate('/features')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/features' ? 700 : 500, color: currentRoute === '/features' ? '#0747A6' : '#475569', cursor: 'pointer' }}>Features</button>
-          <button onClick={() => onNavigate('/pricing')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/pricing' ? 700 : 500, color: currentRoute === '/pricing' ? '#0747A6' : '#475569', cursor: 'pointer' }}>Pricing</button>
-          <button onClick={() => onNavigate('/how-it-works')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/how-it-works' ? 700 : 500, color: currentRoute === '/how-it-works' ? '#0747A6' : '#475569', cursor: 'pointer' }}>How it Works</button>
+          <button onClick={() => onNavigate('/')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/' ? 700 : 500, color: currentRoute === '/' ? '#6750A4' : '#475569', cursor: 'pointer' }}>Home</button>
+          <button onClick={() => onNavigate('/features')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/features' ? 700 : 500, color: currentRoute === '/features' ? '#6750A4' : '#475569', cursor: 'pointer' }}>Features</button>
+          <button onClick={() => onNavigate('/pricing')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/pricing' ? 700 : 500, color: currentRoute === '/pricing' ? '#6750A4' : '#475569', cursor: 'pointer' }}>Pricing</button>
+          <button onClick={() => onNavigate('/how-it-works')} style={{ background: 'none', border: 'none', fontWeight: currentRoute === '/how-it-works' ? 700 : 500, color: currentRoute === '/how-it-works' ? '#6750A4' : '#475569', cursor: 'pointer' }}>How it Works</button>
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={onLaunchSuperAdmin} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#334155', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Super Admin</button>
-          <button onClick={onLaunchOwnerPortal} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#0747A6', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            Launch Portal <ChevronRight size={16} />
+          <button onClick={onLaunchOwnerPortal} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#6750A4', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 10px rgba(103,80,164,0.25)' }}>
+            Login / Register <ChevronRight size={16} />
           </button>
         </div>
       </header>
